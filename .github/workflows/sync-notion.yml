@@ -1,0 +1,54 @@
+name: Sync plan from Notion
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly at :17 — top-of-hour runs are the most delayed
+  workflow_dispatch:         # the "立即更新" button runs this by hand
+
+permissions:
+  contents: write   # commit data/plan.json
+  actions: write    # keep this schedule from being auto-disabled
+
+concurrency:
+  group: sync-notion
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Read Notion
+        run: npm run sync
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet -- data/plan.json; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/plan.json
+          git commit -m "Sync plan from Notion"
+          git push
+
+      # GitHub turns off schedules in public repos after 60 days without activity.
+      # Re-enabling the workflow through GitHub's own API resets that clock;
+      # no third-party action and no dummy commits.
+      - name: Keep schedule alive
+        if: github.event_name == 'schedule'
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/sync-notion.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}

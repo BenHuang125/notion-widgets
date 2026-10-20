@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Five-year goals</title>
+<style>
+  :root{--bg:#F7F6F3;--ink:#37352F;--text:#55534E;--soft:#9A9384;--line:#D6D3CD;--brown:#976D57;
+    --hr:#C9A58F;--biz:#8C9A6E;--phd:#7E8FA6;--warn:#B5651D;
+    --serif:Georgia,"Noto Serif TC","Times New Roman",serif;
+    --sans:-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",Helvetica,Arial,sans-serif}
+  @media (prefers-color-scheme: dark){:root{--bg:#262523;--ink:#E9E6E0;--text:#D6D3CD;--soft:#A8A29A;--line:#45423E;--brown:#C9A58F;
+    --hr:#D2B29E;--biz:#A6B489;--phd:#9EAFC6;--warn:#E0A060}}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--sans)}
+  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;padding:16px 18px}
+  .goal{display:flex;align-items:center;gap:12px;min-width:0}
+  .goal svg{flex:0 0 64px}
+  .t{font-size:14px;font-weight:600;margin-bottom:3px}
+  .s{font-size:12px;color:var(--text);line-height:1.55}
+  .s b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .late{color:var(--warn)}
+  .msg{padding:16px 18px;font-size:13px;color:var(--soft)}
+  @media (prefers-reduced-motion:no-preference){.arc{transition:stroke-dasharray .8s ease}}
+</style>
+</head>
+<body>
+<div class="strip" id="goals"><p class="msg">載入中…</p></div>
+<script type="module">
+import { loadPlan, taipeiToday, monthsUntil, colorFor, escapeHtml } from "./plan.js";
+
+const el = document.getElementById("goals");
+const R = 26, L = 2 * Math.PI * R;
+
+function render(plan) {
+  const today = taipeiToday();
+  if (!plan.goals.length) { el.innerHTML = '<p class="msg">Notion 的「五年目標」還沒有資料。</p>'; return; }
+  el.innerHTML = plan.goals.map((g) => {
+    const p = g.total ? g.done / g.total : 0;
+    const left = monthsUntil(g.date, today);
+    const when = g.date ? g.date.slice(0, 7).replace("-", "/") : "";
+    const line = left === null ? "" : left >= 0
+      ? `距離 ${when} 還有 <b>${left}</b> 個月`
+      : `<span class="late">${when} 已到期</span>`;
+    return `<div class="goal">
+      <svg viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="${escapeHtml(g.name)}：完成 ${g.done}/${g.total}">
+        <circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="5"/>
+        ${p > 0 ? `<circle class="arc" cx="32" cy="32" r="${R}" fill="none" stroke="${colorFor(g.category)}" stroke-width="5" stroke-linecap="round"
+          stroke-dasharray="${(L * p).toFixed(1)} ${L.toFixed(1)}" transform="rotate(-90 32 32)"/>` : ""}
+        <text x="32" y="37" text-anchor="middle" font-size="15" fill="var(--ink)" font-family="Georgia,serif">${g.done}/${g.total}</text>
+      </svg>
+      <div style="min-width:0"><p class="t">${escapeHtml(g.name)}</p>
+      <p class="s">完成 ${g.done}/${g.total} 項<br>${line}</p></div>
+    </div>`;
+  }).join("");
+}
+
+loadPlan().then(render).catch(() => {
+  el.innerHTML = '<p class="msg">暫時讀不到資料，請稍後重新整理。</p>';
+});
+</script>
+</body>
+</html>
