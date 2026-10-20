@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotes</title>
+<style>
+  :root{--bg:#F7F4EE;--line:#E6DFD3;--head:#976D57;--text:#37352F;--sub:#787774;--dot:#D8D0C2;--dotOn:#9A9384}
+  @media (prefers-color-scheme: dark){:root{--bg:#2A2724;--line:#3A3632;--head:#C9A58F;--text:#E9E5DF;--sub:#A8A29A;--dot:#4A453F;--dotOn:#B3AA99}}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);font-family:Georgia,"Times New Roman",serif;color:var(--text)}
+  html,body{height:100%;overflow:hidden}
+  .wrap{position:relative;height:100%;padding:20px 32px 16px;display:flex;flex-direction:column;justify-content:center}
+  #box{position:relative}
+  .q{position:absolute;top:0;left:0;right:0;opacity:0;transition:opacity 1.2s ease}
+  .q.on{opacity:1;position:relative;inset:auto}
+  .head{font-size:19px;line-height:1.45;color:var(--head);font-weight:600}
+  .body{margin-top:10px;font-size:14.5px;line-height:1.6;color:var(--sub);font-style:italic}
+  .dots{display:flex;gap:7px;margin-top:14px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:var(--dot);cursor:pointer;transition:background .4s}
+  .dots i.on{background:var(--dotOn)}
+  @media (max-width:500px){.wrap{padding:16px 16px 14px}.head{font-size:16px}.body{font-size:13.5px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="box"></div>
+  <div class="dots" id="dots"></div>
+</div>
+<script>
+var QUOTES=[
+ {h:"Don't try to predict the future. Build a life that allows you to benefit from the unexpected.",
+  b:"The aim isn't to get everything right, but to put yourself in a position where, even when things don't go to plan, you can still come out ahead."},
+ {h:"Small failures are the price of learning. It's when you suppress them or refuse to learn from them that the real damage is done.",
+  b:"Don't shy away from setbacks. Small setbacks are part of what builds resilience and protects you from being brought down by a much bigger failure later on."},
+ {h:"Look for opportunities where the downside is limited but the upside is potentially unlimited.",
+  b:"Before making a decision, ask yourself: what's the most I could lose, and how much could I stand to gain? Prioritise opportunities where the potential reward far outweighs the risk."},
+ {h:"Don't waste your energy worrying about things that are beyond your control.",
+  b:"You can't change everyone's mind, and you certainly can't reason with everyone. Know where your influence ends, and learn to let go of what you cannot change."}
+];
+var INTERVAL=30000, box=document.getElementById('box'), dots=document.getElementById('dots'), els=[], ds=[], cur=0, timer;
+QUOTES.forEach(function(q,i){
+  var d=document.createElement('div');d.className='q';
+  var h=document.createElement('div');h.className='head';h.textContent=q.h;
+  var b=document.createElement('div');b.className='body';b.textContent=q.b;
+  d.appendChild(h);d.appendChild(b);box.appendChild(d);els.push(d);
+  var dot=document.createElement('i');dot.onclick=function(){show(i);restart();};dots.appendChild(dot);ds.push(dot);
+});
+function show(i){els[cur].classList.remove('on');ds[cur].classList.remove('on');cur=i;els[cur].classList.add('on');ds[cur].classList.add('on');}
+function restart(){clearInterval(timer);timer=setInterval(function(){show((cur+1)%QUOTES.length);},INTERVAL);}
+show(Math.floor(Math.random()*QUOTES.length));restart();
+</script>
+</body>
+</html>
