@@ -13,6 +13,7 @@
   .q{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;
      text-align:center;padding:10px 40px;opacity:0;transition:opacity 1.2s ease}
   .q.on{opacity:1}
+  .head,.body{white-space:nowrap;max-width:100%}
   .head{color:var(--head);font-weight:600;line-height:1.35}
   .body{color:var(--sub);font-style:italic;line-height:1.5;margin-top:.5em}
   @media (max-width:500px){.q{padding:8px 16px}}
@@ -40,14 +41,22 @@ QUOTES.forEach(function(q){
   d.appendChild(h);d.appendChild(b);stage.appendChild(d);els.push(d);
 });
 
-// Shrink each quote's text until it fits the box exactly (never overflows).
-function contentHeight(d){var h=d.firstChild,b=d.lastChild;return (b.offsetTop+b.offsetHeight)-h.offsetTop;}
+// Each line stays on ONE line: shrink its own font until it fits the width,
+// then shrink both together if the pair is still taller than the box.
+var HEAD_MAX=20, BODY_MAX=15;
+function fitLine(el,max,width){
+  var s=max;el.style.fontSize=s+'px';
+  while(s>MIN && el.scrollWidth>width){s-=0.25;el.style.fontSize=s+'px';}
+  return s;
+}
 function fitAll(){
   els.forEach(function(d){
-    var h=d.firstChild,b=d.lastChild,s=MAX;
-    var cs=getComputedStyle(d),avail=d.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
-    do{h.style.fontSize=s+'px';b.style.fontSize=(s*0.78)+'px';s-=0.5;}
-    while(s>=MIN && contentHeight(d)>avail);
+    var h=d.firstChild,b=d.lastChild,cs=getComputedStyle(d);
+    var w=d.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+    var availH=d.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+    var hs=fitLine(h,HEAD_MAX,w), bs=fitLine(b,BODY_MAX,w);
+    var used=(b.offsetTop+b.offsetHeight)-h.offsetTop;
+    if(used>availH){var k=availH/used;h.style.fontSize=Math.max(MIN,hs*k)+'px';b.style.fontSize=Math.max(MIN,bs*k)+'px';}
   });
 }
 function show(i){els[cur].classList.remove('on');cur=i;els[cur].classList.add('on');}
