@@ -5,28 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quotes</title>
 <style>
-  :root{--bg:#F7F4EE;--line:#E6DFD3;--head:#976D57;--text:#37352F;--sub:#787774;--dot:#D8D0C2;--dotOn:#9A9384}
-  @media (prefers-color-scheme: dark){:root{--bg:#2A2724;--line:#3A3632;--head:#C9A58F;--text:#E9E5DF;--sub:#A8A29A;--dot:#4A453F;--dotOn:#B3AA99}}
+  :root{--bg:#F7F4EE;--head:#976D57;--sub:#787774}
+  @media (prefers-color-scheme: dark){:root{--bg:#2A2724;--head:#C9A58F;--sub:#A8A29A}}
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--bg);font-family:Georgia,"Times New Roman",serif;color:var(--text)}
-  html,body{height:100%;overflow:hidden}
-  .wrap{position:relative;height:100%;padding:20px 32px 16px;display:flex;flex-direction:column;justify-content:center}
-  #box{position:relative}
-  .q{position:absolute;top:0;left:0;right:0;opacity:0;transition:opacity 1.2s ease}
-  .q.on{opacity:1;position:relative;inset:auto}
-  .head{font-size:19px;line-height:1.45;color:var(--head);font-weight:600}
-  .body{margin-top:10px;font-size:14.5px;line-height:1.6;color:var(--sub);font-style:italic}
-  .dots{display:flex;gap:7px;margin-top:14px}
-  .dots i{width:7px;height:7px;border-radius:50%;background:var(--dot);cursor:pointer;transition:background .4s}
-  .dots i.on{background:var(--dotOn)}
-  @media (max-width:500px){.wrap{padding:16px 16px 14px}.head{font-size:16px}.body{font-size:13.5px}}
+  html,body{height:100%;overflow:hidden;background:var(--bg);font-family:Georgia,"Times New Roman",serif}
+  #stage{position:relative;height:100%;width:100%}
+  .q{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;
+     text-align:center;padding:10px 40px;opacity:0;transition:opacity 1.2s ease}
+  .q.on{opacity:1}
+  .head{color:var(--head);font-weight:600;line-height:1.35}
+  .body{color:var(--sub);font-style:italic;line-height:1.5;margin-top:.5em}
+  @media (max-width:500px){.q{padding:8px 16px}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="box"></div>
-  <div class="dots" id="dots"></div>
-</div>
+<div id="stage"></div>
 <script>
 var QUOTES=[
  {h:"Don't try to predict the future. Build a life that allows you to benefit from the unexpected.",
@@ -38,17 +31,31 @@ var QUOTES=[
  {h:"Don't waste your energy worrying about things that are beyond your control.",
   b:"You can't change everyone's mind, and you certainly can't reason with everyone. Know where your influence ends, and learn to let go of what you cannot change."}
 ];
-var INTERVAL=30000, box=document.getElementById('box'), dots=document.getElementById('dots'), els=[], ds=[], cur=0, timer;
-QUOTES.forEach(function(q,i){
+var INTERVAL=30000, MAX=20, MIN=8, stage=document.getElementById('stage'), els=[], cur=0;
+
+QUOTES.forEach(function(q){
   var d=document.createElement('div');d.className='q';
   var h=document.createElement('div');h.className='head';h.textContent=q.h;
   var b=document.createElement('div');b.className='body';b.textContent=q.b;
-  d.appendChild(h);d.appendChild(b);box.appendChild(d);els.push(d);
-  var dot=document.createElement('i');dot.onclick=function(){show(i);restart();};dots.appendChild(dot);ds.push(dot);
+  d.appendChild(h);d.appendChild(b);stage.appendChild(d);els.push(d);
 });
-function show(i){els[cur].classList.remove('on');ds[cur].classList.remove('on');cur=i;els[cur].classList.add('on');ds[cur].classList.add('on');}
-function restart(){clearInterval(timer);timer=setInterval(function(){show((cur+1)%QUOTES.length);},INTERVAL);}
-show(Math.floor(Math.random()*QUOTES.length));restart();
+
+// Shrink each quote's text until it fits the box exactly (never overflows).
+function contentHeight(d){var h=d.firstChild,b=d.lastChild;return (b.offsetTop+b.offsetHeight)-h.offsetTop;}
+function fitAll(){
+  els.forEach(function(d){
+    var h=d.firstChild,b=d.lastChild,s=MAX;
+    var cs=getComputedStyle(d),avail=d.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+    do{h.style.fontSize=s+'px';b.style.fontSize=(s*0.78)+'px';s-=0.5;}
+    while(s>=MIN && contentHeight(d)>avail);
+  });
+}
+function show(i){els[cur].classList.remove('on');cur=i;els[cur].classList.add('on');}
+
+fitAll();
+show(Math.floor(Math.random()*QUOTES.length));
+setInterval(function(){show((cur+1)%QUOTES.length);},INTERVAL);
+var t;window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(fitAll,100);});
 </script>
 </body>
 </html>
