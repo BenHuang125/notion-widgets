@@ -10,17 +10,20 @@
     --serif:Georgia,"Noto Serif TC","Times New Roman",serif;
     --sans:-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",Helvetica,Arial,sans-serif}
   *{box-sizing:border-box;margin:0;padding:0}
-  html{color-scheme:light}
+  html{color-scheme:light;height:100%}
+  body{min-height:100%;display:flex;flex-direction:column;justify-content:center;overflow-x:hidden}
+  body.overflow{justify-content:flex-start;overflow-y:auto}
   html,body{background:var(--bg);color:var(--ink);font-family:var(--sans)}
-  .wrap{position:relative;padding:16px 18px 14px}
+  /* Same space above and below; the frame's leftover height is split evenly (body centres .wrap). */
+  .wrap{position:relative;padding:16px 18px 16px}
 
-  .tools{position:absolute;top:10px;right:12px;display:flex;gap:2px;z-index:2}
+  .tools{display:flex;justify-content:flex-end;gap:2px;margin-top:6px}
   .tools a{display:grid;place-items:center;width:30px;height:30px;border-radius:6px;color:var(--soft)}
   .tools a:hover,.tools a:focus-visible{background:var(--hover);color:var(--brown);outline:none}
   .tools a.warn{color:var(--warn)}
   .tools svg{width:17px;height:17px}
 
-  .goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;padding-right:64px}
+  .goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
   .goal{display:flex;align-items:center;gap:12px;min-width:0}
   .goal svg{flex:0 0 60px}
   .goal .t{font-size:14px;font-weight:600;margin-bottom:3px}
@@ -52,6 +55,8 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="goals" id="goals"><p class="msg">載入中…</p></div>
+  <div class="scroll"><div class="track" id="track"></div></div>
   <nav class="tools" aria-label="工具">
     <a id="sync" target="_blank" rel="noopener" title="立即更新" aria-label="立即更新">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 5v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4"/></svg>
@@ -60,8 +65,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg>
     </a>
   </nav>
-  <div class="goals" id="goals"><p class="msg">載入中…</p></div>
-  <div class="scroll"><div class="track" id="track"></div></div>
 </div>
 <script type="module">
 import { loadPlan, taipeiToday, monthsUntil, parseAge, colorFor, escapeHtml, syncLooksStopped, BIRTHDAY, NOTION_EDIT_URL, SYNC_NOW_URL } from "./plan.js";
@@ -122,6 +125,25 @@ function renderRoad(plan, today) {
   document.getElementById("fill").style.width = `${frac * 100}%`;
 }
 
+
+// Notion embeds have a fixed height that only the user can drag, and they ignore
+// resize messages from the page. So the widget fits itself to whatever height the
+// frame has: centred with equal space above and below when there is room, scaled
+// down (to 80% at most) when content grows, and scrollable only beyond that.
+const MIN_SCALE = 0.8;
+const wrap = document.querySelector(".wrap");
+function fit() {
+  wrap.style.zoom = 1;
+  document.body.classList.remove("overflow");
+  const need = wrap.offsetHeight, have = window.innerHeight;
+  if (need <= have) return;
+  const scale = Math.max(MIN_SCALE, have / need);
+  wrap.style.zoom = scale;
+  if (need * scale > have + 1) document.body.classList.add("overflow");
+}
+new ResizeObserver(fit).observe(document.documentElement);
+window.addEventListener("resize", fit);
+
 loadPlan().then((plan) => {
   const today = taipeiToday();
   renderGoals(plan, today);
@@ -130,6 +152,7 @@ loadPlan().then((plan) => {
     sync.classList.add("warn");
     sync.title = sync.ariaLabel = "同步好像停了，按這裡重新執行";
   }
+  fit();
 }).catch(() => {
   goalsEl.innerHTML = '<p class="msg">暫時讀不到資料，請稍後重新整理。</p>';
 });
