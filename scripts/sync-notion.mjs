@@ -12,8 +12,8 @@ const OUT = new URL("../data/plan.json", import.meta.url);
 
 const token = process.env.NOTION_TOKEN;
 if (!token) {
-  console.log("NOTION_TOKEN is not set; keeping the existing data/plan.json.");
-  process.exit(0);
+  console.error("NOTION_TOKEN is not set.");
+  process.exit(1);
 }
 const notion = new Client({ auth: token });
 
@@ -68,24 +68,16 @@ const ds = await notion.dataSources.retrieve({ data_source_id: SOURCES.milestone
 const ages = (ds.properties["年紀"]?.select?.options ?? []).map((o) => o.name);
 
 const content = { ages, goals, milestones };
-const now = new Date();
-// Taipei calendar date. It changes once a day, so the file gets at most one
-// "still running" commit per day: the widget uses it to warn if syncing stops,
-// and the commit counts as repo activity for GitHub's 60-day schedule rule.
-const checkedOn = now.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
 
 let previous = {};
 try {
   previous = JSON.parse(await readFile(OUT, "utf8"));
 } catch {}
-const { checkedOn: prevChecked, updatedAt: prevUpdated, ...prevContent } = previous;
-const changed = JSON.stringify(prevContent) !== JSON.stringify(content);
-
-if (!changed && prevChecked === checkedOn) {
+const { updatedAt: _prev, ...prevContent } = previous;
+if (JSON.stringify(prevContent) === JSON.stringify(content)) {
   console.log("No changes in Notion.");
   process.exit(0);
 }
 await mkdir(new URL("../data/", import.meta.url), { recursive: true });
-const updatedAt = changed || !prevUpdated ? now.toISOString() : prevUpdated;
-await writeFile(OUT, JSON.stringify({ checkedOn, updatedAt, ...content }, null, 2) + "\n");
-console.log(changed ? `Updated: ${goals.length} goals, ${milestones.length} milestones.` : "Daily check stamp.");
+await writeFile(OUT, JSON.stringify({ updatedAt: new Date().toISOString(), ...content }, null, 2) + "\n");
+console.log(`Updated: ${goals.length} goals, ${milestones.length} milestones.`);

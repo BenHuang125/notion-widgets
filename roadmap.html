@@ -20,7 +20,6 @@
   .tools{display:flex;justify-content:flex-end;gap:2px;margin-top:6px}
   .tools a{display:grid;place-items:center;width:30px;height:30px;border-radius:6px;color:var(--soft)}
   .tools a:hover,.tools a:focus-visible{background:var(--hover);color:var(--brown);outline:none}
-  .tools a.warn{color:var(--warn)}
   .tools svg{width:17px;height:17px}
 
   .goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
@@ -67,7 +66,7 @@
   </nav>
 </div>
 <script type="module">
-import { loadPlan, taipeiToday, monthsUntil, parseAge, colorFor, escapeHtml, syncLooksStopped, BIRTHDAY, NOTION_EDIT_URL, SYNC_NOW_URL } from "./plan.js";
+import { loadPlan, taipeiToday, monthsUntil, parseAge, colorFor, escapeHtml, BIRTHDAY, NOTION_EDIT_URL, SYNC_NOW_URL } from "./plan.js";
 
 const goalsEl = document.getElementById("goals");
 const track = document.getElementById("track");
@@ -148,10 +147,6 @@ loadPlan().then((plan) => {
   const today = taipeiToday();
   renderGoals(plan, today);
   renderRoad(plan, today);
-  if (syncLooksStopped(plan, today)) {
-    sync.classList.add("warn");
-    sync.title = sync.ariaLabel = "同步好像停了，按這裡重新執行";
-  }
   fit();
 }).catch(() => {
   goalsEl.innerHTML = '<p class="msg">暫時讀不到資料，請稍後重新整理。</p>';

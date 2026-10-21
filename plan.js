@@ -1,5 +1,5 @@
-// Shared by goals.html and roadmap.html: loads data/plan.json (written by the
-// hourly Notion sync) and provides the date helpers both widgets use.
+// Used by roadmap.html: loads data/plan.json (written by the Notion sync,
+// run by hand from the widget's update button) and provides its date helpers.
 export const BIRTHDAY = { month: 4, day: 20 }; // 20 April
 export const NOTION_EDIT_URL = "https://www.notion.so/73bc0de809994db6bfaa5eaea0afa49c";
 export const SYNC_NOW_URL = "https://github.com/BenHuang125/notion-widgets/actions/workflows/sync-notion.yml";
@@ -33,16 +33,10 @@ export function parseAge(label) {
 }
 
 export async function loadPlan() {
-  const res = await fetch("data/plan.json", { cache: "no-store" });
+  // GitHub Pages caches files for up to 10 minutes; a unique query string skips that cache.
+  const res = await fetch(`data/plan.json?t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`plan.json ${res.status}`);
   return res.json();
-}
-
-// True when the daily stamp is more than two days old, i.e. syncing has stopped.
-export function syncLooksStopped(plan, today = taipeiToday()) {
-  if (!plan.checkedOn) return true;
-  const [y, m, d] = plan.checkedOn.split("-").map(Number);
-  return (today - new Date(y, m - 1, d)) / 864e5 > 2;
 }
 
 export function escapeHtml(s) {
