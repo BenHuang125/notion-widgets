@@ -89,7 +89,12 @@ function listen(
       emit();
     }, onError),
   );
-  return { emit, stop: () => stops.forEach((stop) => stop()) };
+  return {
+    emit,
+    stop: () => {
+      for (const stop of stops) stop();
+    },
+  };
 }
 
 export function dbStore(db: Db): Store {
