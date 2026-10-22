@@ -2,11 +2,21 @@
   "name": "notion-widgets",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
   "scripts": {
-    "sync": "node scripts/sync-notion.mjs"
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "biome check src/roadmap tests/roadmap tools/bundle.mjs vitest.config.ts",
+    "format": "biome format --write src/roadmap tests/roadmap tools/bundle.mjs vitest.config.ts",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run knip && npm run test",
+    "knip": "knip"
   },
-  "dependencies": {
-    "@notionhq/client": "5.27.0"
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "^22.20.5",
+    "esbuild": "0.28.2",
+    "knip": "6.41.0",
+    "playwright": "1.56.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
   }
 }
