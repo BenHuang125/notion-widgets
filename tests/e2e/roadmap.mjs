@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { deflateRawSync } from 'node:zlib';
 import { chromium } from 'playwright';
 
 const root = resolve(fileURLToPath(import.meta.url), '..', '..', '..', 'dist');
@@ -221,6 +222,17 @@ try {
   check((await page.textContent('.dlg-error')).includes('不是備份'), 'wrong paste is refused');
 
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`);
+
+  // First open inside Notion: the embed address carries the plan, nothing to paste.
+  const fresh = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const seedText = JSON.stringify({ version: 1, ...SEED, layout: null });
+  const hash = `#seed=${deflateRawSync(Buffer.from(seedText)).toString('base64url')}`;
+  await fresh.goto(`${url}${hash}`);
+  await fresh.waitForSelector('.goal');
+  check((await fresh.locator('.goal').count()) === 2, 'plan arrives from the embed address');
+  await fresh.reload();
+  await fresh.waitForSelector('.goal');
+  check((await fresh.locator('.goal').count()) === 2, 'and stays after a reload');
 } finally {
   await browser.close();
   server.close();
