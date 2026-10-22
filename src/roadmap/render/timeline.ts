@@ -19,7 +19,7 @@ import { dragRow } from './reorder';
 /** How many years fill the screen width. */
 export const YEARS_IN_VIEW = 6;
 /** Narrow screens show fewer years rather than squeezing cards below this width. */
-const MIN_YEAR_PX = 168;
+const MIN_YEAR_PX = 120;
 
 export interface TimelineEvents extends CardEvents {
   readonly onAddCard: (month: string) => void;
