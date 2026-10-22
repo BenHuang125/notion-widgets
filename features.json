@@ -1,0 +1,9 @@
+[
+  {"id": "roadmap-goals", "desc": "目標圈：新增、編輯、刪除，自動配色、依達成時間排序", "passes": true},
+  {"id": "roadmap-cards", "desc": "每年卡片欄：新增、編輯、刪除、打勾完成與取消", "passes": true},
+  {"id": "roadmap-flags", "desc": "目標全部完成時在預計日期插小旗，顯示最後完成日", "passes": true},
+  {"id": "roadmap-tracks", "desc": "時間段軌道：新增時間段與軌道，重疊自動分排", "passes": true},
+  {"id": "roadmap-layers", "desc": "各層可拖曳到時間軸上方或下方", "passes": true},
+  {"id": "roadmap-pan", "desc": "拖曳、觸控板、滾輪左右移動，拖曳不會誤開卡片", "passes": true},
+  {"id": "roadmap-instant", "desc": "按鈕確認不等存檔，失敗時顯示原因並退回", "passes": true}
+]

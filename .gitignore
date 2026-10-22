@@ -1,1 +1,16 @@
 node_modules/
+# private data must never be committed
+seed/
+*.seed.json
+*backup*.json
+*.env
+.env*
+secrets*
+# local scratch
+snapshots-raw/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+tests/out/
+*.png

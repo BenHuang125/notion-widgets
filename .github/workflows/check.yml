@@ -1,0 +1,111 @@
+name: check
+# GitHub reruns every check on each PR to main and each push to main.
+# Red X = the change broke a rule or a feature: do not merge it.
+# A step whose test file does not exist in this system is skipped.
+# Only the tests for what changed run (tools/changed_parts.py, RULES §3): notes only -> no tests;
+# one area -> that area's unit and end-to-end tests; shared or unknown files -> everything.
+# Auto-merge (Ben chose this on 2026-10-04): a PR from a claude/* branch in this repo merges itself
+# once every check step has passed. A draft PR is never merged; a red X is never merged.
+# (GitHub's built-in auto-merge needs GitHub Pro for private repos, so this job does it instead.)
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: "Which parts changed (decides which tests below run)"
+        id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        # shell: bash = pipefail: without it `| tee` hides a crash of the picker, every test is skipped
+        # and the PR still auto-merges (HSG v67 review)
+        shell: bash
+        run: python3 tools/changed_parts.py "$BASE" "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Install the build tools and the test browser (versions pinned in package-lock.json)
+        if: steps.changed.outputs.code == 'true'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: "Which parts changed: the picker itself"
+        if: steps.changed.outputs.code == 'true'
+        run: python3 tools/changed_parts.py --self-test
+      - name: "Strict types, Biome (lint and format), nothing unused (knip: files, exports, packages)"
+        if: steps.changed.outputs.code == 'true'
+        run: npm run typecheck && npm run lint && npm run knip
+      - name: "Unit tests of the areas that changed (Vitest)"
+        if: steps.changed.outputs.code == 'true' && steps.changed.outputs.areas != ''
+        run: npx vitest run ${{ steps.changed.outputs.areas }}
+      - name: "Bundles: forbidden strings, dist is exactly what src builds"
+        if: steps.changed.outputs.code == 'true' && hashFiles('build.py') != ''
+        run: python3 build.py --check
+      - name: "File size limits"
+        if: hashFiles('tests/budget.mjs') != ''
+        run: node tests/budget.mjs
+      - name: "End to end: the areas that changed (tests/e2e/<area>.mjs)"
+        if: steps.changed.outputs.code == 'true' && steps.changed.outputs.e2e != ''
+        run: for f in ${{ steps.changed.outputs.e2e }}; do echo "== $f"; node "$f" || exit 1; done
+      - name: "End to end: what is not split into areas yet (runs on every code change)"
+        if: steps.changed.outputs.code == 'true' && hashFiles('tests/features-e2e.mjs') != ''
+        run: node tests/features-e2e.mjs
+      - name: "No duplicated functions or code blocks"
+        if: steps.changed.outputs.code == 'true' && hashFiles('tests/dupcheck.py') != ''
+        run: python3 tests/dupcheck.py
+      - name: "Every page scrolls at every width"
+        if: steps.changed.outputs.code == 'true' && hashFiles('tests/scroll.mjs') != ''
+        run: node tests/scroll.mjs
+  automerge:
+    # Runs only after the whole check job passed (needs), only for Claude's branches in this repo,
+    # never for drafts. --match-head-commit: merge exactly the commit that was tested; if a newer
+    # commit was pushed meanwhile, this run stops and the newer commit's own run merges it.
+    needs: check
+    if: >-
+      github.event_name == 'pull_request' &&
+      startsWith(github.head_ref, 'claude/') &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: "Merge the PR (Claude's branch, every check passed)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge "$PR" --merge --match-head-commit "$SHA" --repo "$GITHUB_REPOSITORY"
+      - name: "Delete merged claude/* branches (GitHub's own auto-delete skips merges made by this job)"
+        # Kept: a branch with an open PR, and one with work not in main (ahead of main and its tip was
+        # never merged). Each new chat checks every claude/* branch (RULES §1.3), so old ones cost
+        # tokens every time. A failed delete only leaves the branch; the merge above already happened.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          repo="$GITHUB_REPOSITORY"
+          open=$(gh api "repos/$repo/pulls?state=open&per_page=100" --paginate --jq '.[].head.ref')
+          for b in $(gh api "repos/$repo/branches?per_page=100" --paginate --jq '.[].name | select(startswith("claude/"))'); do
+            if grep -qxF "$b" <<<"$open"; then echo "keep $b: open PR"; continue; fi
+            ahead=$(gh api "repos/$repo/compare/main...$b" --jq .ahead_by) || { echo "keep $b: compare failed"; continue; }
+            tip=$(gh api "repos/$repo/branches/$b" --jq .commit.sha)
+            merged=$(gh api "repos/$repo/pulls?state=closed&head=$GITHUB_REPOSITORY_OWNER:$b" --jq "[.[] | select(.merged_at != null and .head.sha == \"$tip\")] | length")
+            if [ "$ahead" = 0 ] || [ "$merged" -gt 0 ]; then
+              gh api -X DELETE "repos/$repo/git/refs/heads/$b" >/dev/null && echo "deleted $b" || echo "::warning::could not delete $b"
+            else
+              echo "keep $b: $ahead commit(s) not in main and never merged"
+            fi
+          done

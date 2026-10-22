@@ -1,0 +1,50 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
+  "files": { "ignoreUnknown": false, "includes": ["**", "!tests/roadmap/golden/*.json"] },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": { "noNonNullAssertion": "off", "noMagicNumbers": "error" },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "error",
+        "noExcessiveLinesPerFunction": { "level": "error", "options": { "maxLines": 50 } }
+      },
+      "suspicious": { "noExplicitAny": "error", "noEmptyBlockStatements": "error" }
+    }
+  },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  "overrides": [
+    {
+      "includes": ["tests/roadmap/**"],
+      "linter": {
+        "rules": {
+          "style": { "noMagicNumbers": "off" },
+          "complexity": { "noExcessiveLinesPerFunction": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["src/roadmap/core/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "performance": "the pure layer has no clock of its own: time is handed in",
+                  "setTimeout": "the pure layer has no clock of its own: time is handed in",
+                  "setInterval": "the pure layer has no clock of its own: time is handed in",
+                  "Date": "the pure layer has no clock of its own: time is handed in"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
