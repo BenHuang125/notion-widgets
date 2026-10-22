@@ -7,6 +7,7 @@ import { GOAL_PALETTE } from '../core/goals';
 import type { Goal, LayerId, PaletteKey, Plan } from '../core/types';
 import { type Actions, makeActions } from '../data/actions';
 import type { Snapshot, Store } from '../data/store';
+import { backupDialog } from './backup';
 import { closeDialog } from './dialog';
 import { h, icon } from './dom';
 import { cardForm, doneForm, goalForm, segmentForm, trackForm } from './forms';
@@ -53,7 +54,15 @@ export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
   const notices = h('div', { class: 'notices' });
   const goalsSlot = h('div', { class: 'goals-slot' });
   const loading = h('p', { class: 'loading' }, '正在讀取你的路線圖…');
-  const head = h('header', { class: 'top' }, h('h1', {}, '人生路線圖'), h('p', { class: 'sub' }));
+  const backup = h('button', { type: 'button', class: 'btn btn-plain backup-btn' }, '備份');
+  backup.addEventListener('click', () => backupDialog(deps.store, plan()));
+  const head = h(
+    'header',
+    { class: 'top' },
+    h('h1', {}, '人生路線圖'),
+    h('p', { class: 'sub' }),
+    backup,
+  );
   root.replaceChildren(head, notices, goalsSlot, loading);
   dragSlides(shell.board);
   wheelSlides(shell.board, '.lanes');
@@ -213,8 +222,16 @@ function noticeList(state: State, mode: Store['mode']): HTMLElement[] {
   }
   if (mode === 'memory') {
     out.push(
-      h('p', { class: 'notice' }, '這個畫面沒有連上資料庫：可以試用，但重新整理後改動不會保留。'),
+      h(
+        'p',
+        { class: 'notice is-bad' },
+        '這個瀏覽器不讓網頁存資料：可以試用，但重新整理後改動不會保留。',
+      ),
     );
+  }
+  const plan = state.snap.plan;
+  if (state.loaded && !plan.goals.length && !plan.cards.length && !plan.tracks.length) {
+    out.push(h('p', { class: 'notice' }, '還沒有資料：按右上角「備份」貼上備份，或直接新增目標。'));
   }
   const skipped = state.snap.skipped;
   if (skipped.length) {

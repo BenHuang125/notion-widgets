@@ -61,53 +61,18 @@ const SEED = {
   },
 };
 
-/** A tiny database that behaves like the page's db capability (snapshots after each write). */
-function installFakeDb(seed) {
-  const data = structuredClone(seed);
-  const subs = [];
-  const snapOf = (kind) => ({
-    docs: Object.entries(data[kind] ?? {}).map(([id, v]) => ({ id, exists: true, data: () => v })),
-  });
-  const fire = () => {
-    for (const s of subs) s();
+/** Puts the example plan in this browser's storage, the way the page keeps it. */
+function seedStorage(seed) {
+  if (sessionStorage.getItem('seeded')) return;
+  sessionStorage.setItem('seeded', '1');
+  localStorage.setItem('life-roadmap.v1', JSON.stringify({ version: 1, ...seed, layout: null }));
+  // Stand-in for a browser that refuses a save.
+  const real = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (k, v) {
+    if (String(v).includes('存不進去')) throw new Error('儲存空間已滿');
+    return real.call(this, k, v);
   };
-  const docRef = (kind, id) => ({
-    set: async (v) => {
-      // Stand-in for a save the server refuses.
-      if (v.title === '存不進去') throw { code: 'unavailable', message: '連線中斷' };
-      data[kind] ??= {};
-      data[kind][id] = v;
-      fire();
-    },
-    delete: async () => {
-      delete data[kind]?.[id];
-      fire();
-    },
-    onSnapshot: (next) => {
-      const run = () =>
-        next({ id, exists: Boolean(data[kind]?.[id]), data: () => data[kind]?.[id] });
-      subs.push(run);
-      run();
-      return () => undefined;
-    },
-  });
-  const db = {
-    collection: (kind) => ({
-      doc: (id) => docRef(kind, id),
-      onSnapshot: (next) => {
-        const run = () => next(snapOf(kind));
-        subs.push(run);
-        run();
-        return () => undefined;
-      },
-    }),
-    doc: (path) => {
-      const [kind, id] = path.split('/');
-      return docRef(kind, id);
-    },
-  };
-  window.__db = data;
-  window.claude = { use: async (name) => (name === 'db' ? db : null) };
+  window.__saved = () => JSON.parse(localStorage.getItem('life-roadmap.v1'));
 }
 
 const fails = [];
@@ -122,7 +87,7 @@ try {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.clock.setFixedTime(new Date('2026-10-22T12:00:00+08:00'));
-  await page.addInitScript(installFakeDb, SEED);
+  await page.addInitScript(seedStorage, SEED);
   await page.goto(url);
   await page.waitForSelector('.goal');
 
@@ -169,7 +134,7 @@ try {
   check(titles[1] === '範例目標 C', 'new goal sorted by date');
   check(
     (await page.evaluate(
-      () => Object.values(window.__db.goals).find((g) => g.title === '範例目標 C').color,
+      () => Object.values(window.__saved().goals).find((g) => g.title === '範例目標 C').color,
     )) === 'olive',
     'new goal gets next color',
   );
@@ -185,7 +150,7 @@ try {
     [...document.querySelectorAll('.card-title')].some((e) => e.textContent === '新卡片'),
   );
   const month = await page.evaluate(
-    () => Object.values(window.__db.cards).find((c) => c.title === '新卡片').month,
+    () => Object.values(window.__saved().cards).find((c) => c.title === '新卡片').month,
   );
   check(month === '2030-03', 'card stored with its month');
 
@@ -198,7 +163,7 @@ try {
   await page.mouse.down();
   await page.mouse.move(box.x + 5, top.y - 4, { steps: 8 });
   await page.mouse.up();
-  await page.waitForFunction(() => window.__db.meta?.layout?.above?.[0]?.startsWith('track:'));
+  await page.waitForFunction(() => window.__saved().layout?.above?.[0]?.startsWith('track:'));
   check(true, 'track moved above the axis');
 
   // Drag the board: it slides, and the click at the end does not open a card.
@@ -220,13 +185,40 @@ try {
   check((await page.locator('.dlg').count()) === 0, 'dialog closes without waiting for the save');
   await page.waitForSelector('.toast');
   check(
-    (await page.textContent('.toast')).includes('連線中斷'),
+    (await page.textContent('.toast')).includes('儲存空間已滿'),
     'failed save is shown with its reason',
   );
   await page.waitForFunction(
     () => ![...document.querySelectorAll('.card-title')].some((e) => e.textContent === '存不進去'),
   );
   check(true, 'failed card is taken back off the page');
+
+  await page.click('.toast');
+
+  // Kept in the browser: a reload shows the same plan.
+  await page.reload();
+  await page.waitForSelector('.goal');
+  check((await page.locator('.goal').count()) === 3, 'plan survives a reload');
+
+  // Backup: copy out, paste back (asks first, shows what gets replaced).
+  await page.click('.backup-btn');
+  const text = await page.inputValue('#backup-out');
+  check(text.includes('範例目標 C'), 'backup holds the plan');
+  const one = JSON.parse(text);
+  one.goals = { only: { title: '只有一個', target: '2030-01-01', color: 'teal' } };
+  await page.fill('#backup-in', JSON.stringify(one));
+  await page.click('.dlg .btn-primary');
+  check(
+    (await page.textContent('.dlg')).includes('換成：1 個目標'),
+    'paste asks first with counts',
+  );
+  await page.click('.dlg .btn-danger');
+  await page.waitForFunction(() => document.querySelectorAll('.goal').length === 1);
+  check(true, 'pasted backup replaces the plan');
+  await page.click('.backup-btn');
+  await page.fill('#backup-in', '不是備份');
+  await page.click('.dlg .btn-primary');
+  check((await page.textContent('.dlg-error')).includes('不是備份'), 'wrong paste is refused');
 
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`);
 } finally {
