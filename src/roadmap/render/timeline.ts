@@ -1,7 +1,7 @@
 // The board: rows above the axis, the axis itself (years, today's snail), rows below it,
 // and one column of cards per year. Everything slides sideways together.
 
-import { cardsByYear, normalizeLayout, yearEndMonth } from '../core/board';
+import { yearEndMonth } from '../core/board';
 import {
   type Day,
   FIRST_YEAR,
@@ -10,10 +10,10 @@ import {
   toYearMonth,
   yearCount,
 } from '../core/dates';
-import type { LayerId, Plan, Segment, Track } from '../core/types';
+import type { Card, Goal, LayerId, Segment, Track } from '../core/types';
 import { type CardEvents, cardView } from './cards';
 import { h, icon, s } from './dom';
-import { lane, type Scale } from './lanes';
+import type { Scale } from './lanes';
 import { dragRow } from './reorder';
 
 /** How many years fill the screen width. */
@@ -63,7 +63,7 @@ function snail(): SVGElement {
   );
 }
 
-function axis(scale: Scale, today: Day, events: TimelineEvents): HTMLElement {
+export function axisRow(scale: Scale, today: Day, events: TimelineEvents): HTMLElement {
   const nowX = scale.x(monthsFromStart(today));
   const years = h('div', { class: 'axis-years' });
   for (let i = 0; i < yearCount(); i += 1) {
@@ -97,59 +97,53 @@ function axis(scale: Scale, today: Day, events: TimelineEvents): HTMLElement {
   return h('div', { class: 'axis', 'data-layer': 'axis' }, line, now, years);
 }
 
-function columns(plan: Plan, scale: Scale, events: TimelineEvents): HTMLElement {
-  const byYear = cardsByYear(plan.cards);
-  const goals = new Map(plan.goals.map((g) => [g.id, g]));
-  const wrap = h('div', { class: 'columns' });
-  for (let i = 0; i < yearCount(); i += 1) {
-    const year = FIRST_YEAR + i;
-    const col = h('div', { class: 'col', style: `width:${scale.yearWidth}px` });
-    for (const c of byYear.get(year) ?? []) {
-      col.append(cardView(c, c.goalId ? goals.get(c.goalId) : undefined, events));
-    }
-    const add = h(
-      'button',
-      { type: 'button', class: 'add-card hover-only' },
-      icon('plus'),
-      `新增 ${year} 年卡片`,
-    );
-    add.addEventListener('click', () => events.onAddCard(yearEndMonth(year)));
-    col.append(add);
-    wrap.append(col);
-  }
-  return wrap;
-}
-
-export function timeline(
-  plan: Plan,
+/** One year's column of cards, with its (hover) add button at the bottom. */
+export function yearColumn(
+  year: number,
+  cards: readonly Card[],
+  goals: ReadonlyMap<string, Goal>,
   scale: Scale,
-  today: Day,
   events: TimelineEvents,
 ): HTMLElement {
-  const inner = h('div', {
-    class: 'board-inner',
-    style: `width:${yearCount() * scale.yearWidth}px`,
-  });
-  const order = normalizeLayout(plan);
-  const rows: HTMLElement[] = [];
-  const laneEvents = {
+  const col = h('div', { class: 'col', style: `width:${scale.yearWidth}px` });
+  for (const c of cards) {
+    col.append(cardView(c, c.goalId ? goals.get(c.goalId) : undefined, events));
+  }
+  const add = h(
+    'button',
+    { type: 'button', class: 'add-card hover-only' },
+    icon('plus'),
+    `新增 ${year} 年卡片`,
+  );
+  add.addEventListener('click', () => events.onAddCard(yearEndMonth(year)));
+  col.append(add);
+  return col;
+}
+
+export interface BoardShell {
+  readonly board: HTMLElement;
+  readonly inner: HTMLElement;
+  readonly lanes: HTMLElement;
+  readonly columns: HTMLElement;
+}
+
+/** The sliding sheet itself: built once; its rows and columns are swapped in as they change. */
+export function boardShell(): BoardShell {
+  const lanes = h('div', { class: 'lanes' });
+  const columns = h('div', { class: 'columns' });
+  const inner = h('div', { class: 'board-inner' }, lanes, columns);
+  const board = h('div', { class: 'board', 'data-scroll': 'board', 'aria-label': '時間軸' }, inner);
+  return { board, inner, lanes, columns };
+}
+
+/** The handlers a lane needs; dragging a row looks up the current rows when the drag starts. */
+export function laneEvents(lanes: HTMLElement, events: TimelineEvents) {
+  return {
     onSegment: events.onSegment,
     onTrack: events.onTrack,
     onGrip: (id: LayerId, row: HTMLElement, e: PointerEvent) =>
-      dragRow(e, id, row, rows, events.onMoveLayer),
+      dragRow(e, id, row, [...lanes.children] as HTMLElement[], events.onMoveLayer),
   };
-  const addLanes = (ids: readonly LayerId[]): void => {
-    for (const id of ids) {
-      const row = lane(id, plan, scale, laneEvents);
-      if (row) rows.push(row);
-    }
-  };
-  addLanes(order.above);
-  rows.push(axis(scale, today, events));
-  addLanes(order.below);
-  const lanes = h('div', { class: 'lanes', 'data-wheel': 'slide' }, ...rows);
-  inner.append(lanes, columns(plan, scale, events));
-  return h('div', { class: 'board', 'data-scroll': 'board', 'aria-label': '時間軸' }, inner);
 }
 
 /** The scroll position that puts `year` in the first column. */

@@ -2,15 +2,20 @@
 // Example data only: Ben's own plan lives in the published page's database, never here.
 //
 //   node tests/e2e/roadmap.mjs [screenshot-folder]
-import { createServer } from 'node:http';
+
 import { readFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = resolve(fileURLToPath(import.meta.url), '..', '..', '..', 'dist');
 const shots = process.argv[2];
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.map': 'application/json' };
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.map': 'application/json',
+};
 
 const server = createServer(async (req, res) => {
   const path = req.url === '/' ? '/index.html' : (req.url ?? '/').split('?')[0];
@@ -31,13 +36,29 @@ const SEED = {
     g2: { title: '範例目標 B', target: '2027-06-30', color: 'slate' },
   },
   cards: {
-    c1: { title: '已完成的卡', note: '', goalId: 'g2', month: '2026-12', doneOn: '2026-09-30', rank: 0 },
-    c2: { title: '未完成的卡', note: '一行說明', goalId: 'g2', month: '2027-12', doneOn: null, rank: 0 },
+    c1: {
+      title: '已完成的卡',
+      note: '',
+      goalId: 'g2',
+      month: '2026-12',
+      doneOn: '2026-09-30',
+      rank: 0,
+    },
+    c2: {
+      title: '未完成的卡',
+      note: '一行說明',
+      goalId: 'g2',
+      month: '2027-12',
+      doneOn: null,
+      rank: 0,
+    },
     c3: { title: '別的目標', note: '', goalId: 'g1', month: '2028-12', doneOn: null, rank: 0 },
     bad: { title: 5, month: 'x' },
   },
   tracks: { t1: { name: '學歷' } },
-  segments: { s1: { trackId: 't1', name: '範例時間段', start: '2017-09', end: '2021-06', color: 'olive' } },
+  segments: {
+    s1: { trackId: 't1', name: '範例時間段', start: '2017-09', end: '2021-06', color: 'olive' },
+  },
 };
 
 /** A tiny database that behaves like the page's db capability (snapshots after each write). */
@@ -52,6 +73,8 @@ function installFakeDb(seed) {
   };
   const docRef = (kind, id) => ({
     set: async (v) => {
+      // Stand-in for a save the server refuses.
+      if (v.title === '存不進去') throw { code: 'unavailable', message: '連線中斷' };
       data[kind] ??= {};
       data[kind][id] = v;
       fire();
@@ -61,7 +84,8 @@ function installFakeDb(seed) {
       fire();
     },
     onSnapshot: (next) => {
-      const run = () => next({ id, exists: Boolean(data[kind]?.[id]), data: () => data[kind]?.[id] });
+      const run = () =>
+        next({ id, exists: Boolean(data[kind]?.[id]), data: () => data[kind]?.[id] });
       subs.push(run);
       run();
       return () => undefined;
@@ -104,13 +128,19 @@ try {
 
   const goalTitles = await page.$$eval('.goal-title', (els) => els.map((e) => e.textContent));
   check(goalTitles.join() === '範例目標 B,範例目標 A', 'goals sorted soonest first');
-  check((await page.textContent('.notice.is-bad'))?.includes('卡片 bad') === true, 'bad row reported');
+  check(
+    (await page.textContent('.notice.is-bad'))?.includes('卡片 bad') === true,
+    'bad row reported',
+  );
   check((await page.locator('.notice.is-bad').count()) === 1, 'one notice for the unreadable row');
   check((await page.locator('.axis-year.is-now').textContent()) === '2026', 'current year marked');
   const firstVisible = await page.$eval('[data-scroll="board"]', (b) => b.scrollLeft);
   const yearW = await page.$eval('.col', (c) => c.getBoundingClientRect().width);
   check(Math.abs(firstVisible - 9 * yearW) < 2, 'opens with this year in the first column');
-  check(Math.abs(yearW - (await page.$eval('#roadmap', (r) => r.clientWidth)) / 6) < 2, 'six years in view');
+  check(
+    Math.abs(yearW - (await page.$eval('#roadmap', (r) => r.clientWidth)) / 6) < 2,
+    'six years in view',
+  );
   if (shots) await page.screenshot({ path: `${shots}/roadmap-desktop.png`, fullPage: true });
 
   // Tick the open card of goal B: asks for the date, then the goal is reached and a flag shows.
@@ -118,7 +148,10 @@ try {
   await page.fill('.dlg input[type=date]', '2026-10-20');
   await page.click('.dlg .btn-primary');
   await page.waitForSelector('.flag-mark');
-  check((await page.textContent('.flag-text')).includes('2026/10/20'), 'flag shows the last tick date');
+  check(
+    (await page.textContent('.flag-text')).includes('2026/10/20'),
+    'flag shows the last tick date',
+  );
   check((await page.locator('.card.is-done').count()) === 2, 'card shows as done');
   // Untick: back to open, flag goes away.
   await page.click('.card.is-done .tick >> nth=1');
@@ -134,7 +167,12 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.goal').length === 3);
   const titles = await page.$$eval('.goal-title', (els) => els.map((e) => e.textContent));
   check(titles[1] === '範例目標 C', 'new goal sorted by date');
-  check((await page.evaluate(() => Object.values(window.__db.goals).find((g) => g.title === '範例目標 C').color)) === 'olive', 'new goal gets next color');
+  check(
+    (await page.evaluate(
+      () => Object.values(window.__db.goals).find((g) => g.title === '範例目標 C').color,
+    )) === 'olive',
+    'new goal gets next color',
+  );
 
   // Add a card under 2030 with a goal and a month.
   await page.hover('.col >> nth=13');
@@ -143,8 +181,12 @@ try {
   await page.selectOption('.dlg select >> nth=0', { label: '範例目標 C' });
   await page.selectOption('.dlg .pair select >> nth=1', '3');
   await page.click('.dlg .btn-primary');
-  await page.waitForFunction(() => [...document.querySelectorAll('.card-title')].some((e) => e.textContent === '新卡片'));
-  const month = await page.evaluate(() => Object.values(window.__db.cards).find((c) => c.title === '新卡片').month);
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('.card-title')].some((e) => e.textContent === '新卡片'),
+  );
+  const month = await page.evaluate(
+    () => Object.values(window.__db.cards).find((c) => c.title === '新卡片').month,
+  );
   check(month === '2030-03', 'card stored with its month');
 
   // Move the track lane above the axis by dragging its handle.
@@ -169,6 +211,22 @@ try {
   await page.mouse.up();
   check((await board.evaluate((b) => b.scrollLeft)) > before, 'dragging slides the board');
   check((await page.locator('.dlg').count()) === 0, 'drag does not open a dialog');
+
+  // A refused save: the card shows at once, then goes away again with a message.
+  await page.hover('.col >> nth=12');
+  await page.click('.col >> nth=12 >> .add-card');
+  await page.fill('.dlg input[type=text]', '存不進去');
+  await page.click('.dlg .btn-primary');
+  check((await page.locator('.dlg').count()) === 0, 'dialog closes without waiting for the save');
+  await page.waitForSelector('.toast');
+  check(
+    (await page.textContent('.toast')).includes('連線中斷'),
+    'failed save is shown with its reason',
+  );
+  await page.waitForFunction(
+    () => ![...document.querySelectorAll('.card-title')].some((e) => e.textContent === '存不進去'),
+  );
+  check(true, 'failed card is taken back off the page');
 
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`);
 } finally {

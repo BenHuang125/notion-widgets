@@ -52,7 +52,7 @@ function readDate(input: HTMLInputElement): string {
 }
 
 /** Deleting asks once more, naming what goes, before anything is removed. */
-const del = (label: string, what: string, run: () => Promise<void>): DialogAction => ({
+const del = (label: string, what: string, run: () => void): DialogAction => ({
   label,
   kind: 'danger',
   run: () => {
@@ -64,8 +64,8 @@ const del = (label: string, what: string, run: () => Promise<void>): DialogActio
         {
           label,
           kind: 'danger',
-          run: async () => {
-            await run();
+          run: () => {
+            run();
             return undefined;
           },
         },
@@ -83,10 +83,11 @@ export function goalForm(actions: Actions, goal: Goal | null, today: string): vo
   const save: DialogAction = {
     label: goal ? '儲存' : '新增目標',
     kind: 'primary',
-    run: async () => {
+    run: () => {
       const t = required(title, '標題');
       const d = readDate(target);
-      await (goal ? actions.editGoal(goal, t, d) : actions.addGoal(t, d));
+      if (goal) actions.editGoal(goal, t, d);
+      else actions.addGoal(t, d);
       return undefined;
     },
   };
@@ -131,9 +132,10 @@ export function cardForm(
   const save: DialogAction = {
     label: card ? '儲存' : '新增卡片',
     kind: 'primary',
-    run: async () => {
+    run: () => {
       const d = read();
-      await (card ? actions.editCard(card, d) : actions.addCard(d));
+      if (card) actions.editCard(card, d);
+      else actions.addCard(d);
       return undefined;
     },
   };
@@ -159,8 +161,8 @@ export function doneForm(actions: Actions, card: Card, today: string): void {
       {
         label: '確認完成',
         kind: 'primary',
-        run: async () => {
-          await actions.setDone(card, readDate(on));
+        run: () => {
+          actions.setDone(card, readDate(on));
           return undefined;
         },
       },
@@ -222,8 +224,15 @@ function trackPicker(tracks: readonly Track[], chosen: string | null) {
   };
   sel.addEventListener('change', sync);
   sync();
-  const read = async (actions: Actions): Promise<string> =>
-    sel.value === NEW ? actions.addTrack(required(name, '新軌道名稱')) : sel.value;
+  /** Checks the choice first; only then (`make`) adds a new track if one was asked for. */
+  const read = (actions: Actions): (() => string) => {
+    if (sel.value !== NEW) {
+      const id = sel.value;
+      return () => id;
+    }
+    const n = required(name, '新軌道名稱');
+    return () => actions.addTrack(n);
+  };
   return { el: h('div', { class: 'stack' }, sel, name), read };
 }
 
@@ -237,17 +246,19 @@ export function segmentForm(actions: Actions, input: SegmentFormInput): void {
   const save: DialogAction = {
     label: seg ? '儲存' : '新增時間段',
     kind: 'primary',
-    run: async () => {
+    run: () => {
       const n = required(name, '名稱');
       if (end.read() < start.read()) fieldProblem('結束不能早於開始');
+      const trackId = track.read(actions);
       const d: SegmentDraft = {
-        trackId: await track.read(actions),
+        trackId: trackId(),
         name: n,
         start: start.read(),
         end: end.read(),
         color: color.read(),
       };
-      await (seg ? actions.editSegment(seg, d) : actions.addSegment(d));
+      if (seg) actions.editSegment(seg, d);
+      else actions.addSegment(d);
       return undefined;
     },
   };
@@ -269,9 +280,10 @@ export function trackForm(actions: Actions, track: Track | null): void {
   const save: DialogAction = {
     label: track ? '儲存' : '新增軌道',
     kind: 'primary',
-    run: async () => {
+    run: () => {
       const n = required(name, '名稱');
-      await (track ? actions.renameTrack(track, n) : actions.addTrack(n));
+      if (track) actions.renameTrack(track, n);
+      else actions.addTrack(n);
       return undefined;
     },
   };

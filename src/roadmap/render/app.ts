@@ -1,16 +1,28 @@
-// Puts the whole page together and redraws it whenever the stored plan changes.
+// Puts the page together. The frame (header, goal row, sliding board) is built once; each change
+// to the plan redraws, at most once per screen frame, only the pieces whose data changed.
 
-import { type Day, toIsoDate } from '../core/dates';
+import { cardsByYear, normalizeLayout } from '../core/board';
+import { type Day, FIRST_YEAR, toIsoDate, yearCount } from '../core/dates';
 import { GOAL_PALETTE } from '../core/goals';
-import type { PaletteKey, Plan } from '../core/types';
+import type { Goal, LayerId, PaletteKey, Plan } from '../core/types';
 import { type Actions, makeActions } from '../data/actions';
 import type { Snapshot, Store } from '../data/store';
 import { closeDialog } from './dialog';
 import { h, icon } from './dom';
 import { cardForm, doneForm, goalForm, segmentForm, trackForm } from './forms';
 import { goalsRow } from './goals-row';
+import { makeKeeper, placeChildren } from './keep';
+import { lane, type Scale } from './lanes';
 import { dragSlides, wheelSlides } from './pan';
-import { leftFor, scaleFor, type TimelineEvents, timeline } from './timeline';
+import {
+  axisRow,
+  boardShell,
+  laneEvents,
+  leftFor,
+  scaleFor,
+  type TimelineEvents,
+  yearColumn,
+} from './timeline';
 
 export interface AppDeps {
   readonly store: Store;
@@ -27,89 +39,190 @@ const EMPTY: Plan = {
   layout: { above: [], below: [] },
 };
 
+interface State {
+  snap: Snapshot;
+  loaded: boolean;
+  failure: string | null;
+}
+
 export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
-  let snap: Snapshot = { plan: EMPTY, skipped: [] };
-  let loaded = false;
-  let failure: string | null = null;
-  let firstBoard = true;
-  const actions = makeActions(deps.store, () => snap.plan, deps.newId);
-  const draw = (): void => {
-    const scrolls = keepScroll(root);
-    root.replaceChildren(...page(snap, loaded, failure, deps, actions, root.clientWidth));
-    wire(root, deps, firstBoard && loaded);
-    if (loaded) firstBoard = false;
-    scrolls();
+  const state: State = { snap: { plan: EMPTY, skipped: [] }, loaded: false, failure: null };
+  const plan = (): Plan => state.snap.plan;
+  const actions = makeActions(deps.store, plan, deps.newId, toast);
+  const shell = boardShell();
+  const notices = h('div', { class: 'notices' });
+  const goalsSlot = h('div', { class: 'goals-slot' });
+  const loading = h('p', { class: 'loading' }, '正在讀取你的路線圖…');
+  const head = h('header', { class: 'top' }, h('h1', {}, '人生路線圖'), h('p', { class: 'sub' }));
+  root.replaceChildren(head, notices, goalsSlot, loading);
+  dragSlides(shell.board);
+  wheelSlides(shell.board, '.lanes');
+  const draw = drawer({ root, deps, actions, state, shell, notices, goalsSlot, loading, head });
+  let frame = 0;
+  /** Many snapshots in one moment (several collections, pending then confirmed) = one redraw. */
+  const schedule = (): void => {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      draw();
+    });
   };
   const stop = deps.store.subscribe(
     (s) => {
-      snap = s;
-      loaded = true;
-      failure = null;
-      draw();
+      state.snap = s;
+      state.loaded = true;
+      state.failure = null;
+      schedule();
     },
     (message) => {
-      failure = message;
-      draw();
+      state.failure = message;
+      schedule();
     },
   );
-  let pending = 0;
-  const onResize = (): void => {
-    cancelAnimationFrame(pending);
-    pending = requestAnimationFrame(draw);
-  };
-  window.addEventListener('resize', onResize);
-  draw();
+  window.addEventListener('resize', schedule);
+  schedule();
   return () => {
     stop();
+    cancelAnimationFrame(frame);
     closeDialog();
-    window.removeEventListener('resize', onResize);
+    window.removeEventListener('resize', schedule);
   };
 }
 
-function page(
-  snap: Snapshot,
-  loaded: boolean,
-  failure: string | null,
-  deps: AppDeps,
-  actions: Actions,
-  width: number,
-) {
-  const today = toIsoDate(deps.today());
-  const { plan } = snap;
-  const notices = noticeList(snap, failure, deps.store.mode);
-  const head = h(
-    'header',
-    { class: 'top' },
-    h('h1', {}, '人生路線圖'),
-    h('p', { class: 'sub' }, subline(deps.today())),
+interface DrawParts {
+  readonly root: HTMLElement;
+  readonly deps: AppDeps;
+  readonly actions: Actions;
+  readonly state: State;
+  readonly shell: ReturnType<typeof boardShell>;
+  readonly notices: HTMLElement;
+  readonly goalsSlot: HTMLElement;
+  readonly loading: HTMLElement;
+  readonly head: HTMLElement;
+}
+
+function drawer(p: DrawParts): () => void {
+  const keeper = makeKeeper();
+  const events = boardEvents(
+    () => p.state.snap.plan,
+    p.actions,
+    () => toIsoDate(p.deps.today()),
   );
-  if (!loaded) return [head, ...notices, h('p', { class: 'loading' }, '正在讀取你的路線圖…')];
-  const goals = goalsRow(plan.goals, plan.cards, today, {
-    onAdd: () => goalForm(actions, null, today),
-    onOpen: (g) => goalForm(actions, g, today),
-  });
-  const board = timeline(plan, scaleFor(width), deps.today(), boardEvents(plan, actions, today));
-  return [head, ...notices, goals, board];
+  const lanesEvents = laneEvents(p.shell.lanes, events);
+  let shownWidth = 0;
+  return () => {
+    const today = p.deps.today();
+    const sub = p.head.querySelector('.sub');
+    if (sub) sub.textContent = `${today.year} 年 ${today.month} 月 ${today.day} 日`;
+    placeChildren(p.notices, noticeList(p.state, p.deps.store.mode));
+    if (!p.state.loaded) return;
+    const scale = scaleFor(p.root.clientWidth);
+    const plan = p.state.snap.plan;
+    const firstShow = !p.shell.board.isConnected;
+    if (firstShow) p.loading.replaceWith(p.shell.board);
+    const share = p.shell.board.scrollLeft / Math.max(1, p.shell.board.scrollWidth);
+    drawGoals(p, keeper, plan, toIsoDate(today));
+    p.shell.inner.style.width = `${yearCount() * scale.yearWidth}px`;
+    drawLanes(p, keeper, plan, scale, today, events, lanesEvents);
+    drawColumns(p, keeper, plan, scale, events);
+    keeper.sweep();
+    if (firstShow) p.shell.board.scrollLeft = leftFor(today.year, scale);
+    else if (scale.yearWidth !== shownWidth)
+      p.shell.board.scrollLeft = share * p.shell.board.scrollWidth;
+    shownWidth = scale.yearWidth;
+  };
 }
 
-function subline(today: Day): string {
-  return `${today.year} 年 ${today.month} 月 ${today.day} 日`;
+function drawGoals(p: DrawParts, keeper: ReturnType<typeof makeKeeper>, plan: Plan, today: string) {
+  const sig = JSON.stringify([today, plan.goals, plan.cards.map((c) => [c.goalId, c.state])]);
+  const old = p.goalsSlot.querySelector<HTMLElement>('[data-scroll="goals"]');
+  const node = keeper.piece('goals', sig, () =>
+    goalsRow(plan.goals, plan.cards, today, {
+      onAdd: () => goalForm(p.actions, null, today),
+      onOpen: (g) => goalForm(p.actions, g, today),
+    }),
+  );
+  const fresh = node.querySelector<HTMLElement>('[data-scroll="goals"]');
+  if (old && fresh && old !== fresh) fresh.scrollLeft = old.scrollLeft;
+  placeChildren(p.goalsSlot, [node]);
 }
 
-function noticeList(snap: Snapshot, failure: string | null, mode: Store['mode']): HTMLElement[] {
+function laneSig(id: LayerId, plan: Plan, width: number): string {
+  if (id === 'cakes') return `${width}`;
+  if (id === 'flags') {
+    return JSON.stringify([width, plan.goals, plan.cards.map((c) => [c.goalId, c.state])]);
+  }
+  const trackId = id.slice('track:'.length);
+  const track = plan.tracks.find((t) => t.id === trackId);
+  return JSON.stringify([width, track, plan.segments.filter((x) => x.trackId === trackId)]);
+}
+
+function drawLanes(
+  p: DrawParts,
+  keeper: ReturnType<typeof makeKeeper>,
+  plan: Plan,
+  scale: Scale,
+  today: Day,
+  events: TimelineEvents,
+  lanesEvents: ReturnType<typeof laneEvents>,
+): void {
+  const order = normalizeLayout(plan);
+  const w = scale.yearWidth;
+  // normalizeLayout only lists tracks that exist, so every id builds a row.
+  const row = (id: LayerId): HTMLElement =>
+    keeper.piece(
+      `lane:${id}`,
+      laneSig(id, plan, w),
+      () => lane(id, plan, scale, lanesEvents) ?? h('div'),
+    );
+  const axisSig = JSON.stringify([w, toIsoDate(today)]);
+  const rows = [
+    ...order.above.map(row),
+    keeper.piece('axis', axisSig, () => axisRow(scale, today, events)),
+    ...order.below.map(row),
+  ];
+  placeChildren(p.shell.lanes, rows);
+}
+
+function drawColumns(
+  p: DrawParts,
+  keeper: ReturnType<typeof makeKeeper>,
+  plan: Plan,
+  scale: Scale,
+  events: TimelineEvents,
+): void {
+  const byYear = cardsByYear(plan.cards);
+  const goals = new Map<string, Goal>(plan.goals.map((g) => [g.id, g]));
+  const cols: HTMLElement[] = [];
+  for (let i = 0; i < yearCount(); i += 1) {
+    const year = FIRST_YEAR + i;
+    const cards = byYear.get(year) ?? [];
+    const used = cards.map((c) => (c.goalId ? goals.get(c.goalId) : undefined));
+    const sig = JSON.stringify([scale.yearWidth, cards, used]);
+    cols.push(
+      keeper.piece(`col:${year}`, sig, () => yearColumn(year, cards, goals, scale, events)),
+    );
+  }
+  placeChildren(p.shell.columns, cols);
+}
+
+function noticeList(state: State, mode: Store['mode']): HTMLElement[] {
   const out: HTMLElement[] = [];
-  if (failure) out.push(h('p', { class: 'notice is-bad', role: 'alert' }, failure));
+  if (state.failure) {
+    out.push(h('p', { class: 'notice is-bad', role: 'alert' }, state.failure));
+  }
   if (mode === 'memory') {
     out.push(
       h('p', { class: 'notice' }, '這個畫面沒有連上資料庫：可以試用，但重新整理後改動不會保留。'),
     );
   }
-  if (snap.skipped.length) {
+  const skipped = state.snap.skipped;
+  if (skipped.length) {
     out.push(
       h(
         'p',
         { class: 'notice is-bad' },
-        `有 ${snap.skipped.length} 筆資料讀不懂，先不顯示：${snap.skipped.join('；')}`,
+        `有 ${skipped.length} 筆資料讀不懂，先不顯示：${skipped.join('；')}`,
       ),
     );
   }
@@ -121,37 +234,38 @@ function nextSegmentColor(plan: Plan): PaletteKey {
   return GOAL_PALETTE.find((k) => !used.has(k)) ?? GOAL_PALETTE[0] ?? 'clay';
 }
 
-function boardEvents(plan: Plan, actions: Actions, today: string): TimelineEvents {
+/** Built once; every handler reads the current plan when it runs, never a stale copy. */
+function boardEvents(plan: () => Plan, actions: Actions, today: () => string): TimelineEvents {
   return {
     onTick: (card) => {
-      if (card.state.kind === 'done') void actions.setDone(card, null).catch(toast);
-      else doneForm(actions, card, today);
+      if (card.state.kind === 'done') actions.setDone(card, null);
+      else doneForm(actions, card, today());
     },
-    onOpen: (card) => cardForm(actions, plan.goals, card, card.month),
-    onAddCard: (month) => cardForm(actions, plan.goals, null, month),
+    onOpen: (card) => cardForm(actions, plan().goals, card, card.month),
+    onAddCard: (month) => cardForm(actions, plan().goals, null, month),
     onAxis: (month, x, y) =>
       axisMenu(x, y, [
         [
           '新增時間段',
           () =>
             segmentForm(actions, {
-              tracks: plan.tracks,
+              tracks: plan().tracks,
               segment: null,
               start: month,
-              color: nextSegmentColor(plan),
+              color: nextSegmentColor(plan()),
             }),
         ],
         ['新增軌道', () => trackForm(actions, null)],
       ]),
     onSegment: (segment) =>
       segmentForm(actions, {
-        tracks: plan.tracks,
+        tracks: plan().tracks,
         segment,
         start: segment.start,
         color: segment.color,
       }),
     onTrack: (track) => trackForm(actions, track),
-    onMoveLayer: (id, slot) => void actions.moveLayer(id, slot).catch(toast),
+    onMoveLayer: (id, slot) => actions.moveLayer(id, slot),
   };
 }
 
@@ -176,34 +290,10 @@ function axisMenu(x: number, y: number, items: readonly [string, () => void][]):
   menu.querySelector('button')?.focus();
 }
 
-/** A short message at the bottom of the screen (used for failed saves outside a dialog). */
+/** A failed save, shown at the bottom of the screen until clicked. */
 export function toast(e: unknown): void {
   const text = e instanceof Error ? e.message : String(e);
-  const el = h('p', { class: 'toast', role: 'alert' }, text);
+  const el = h('p', { class: 'toast', role: 'alert' }, `${text}。畫面已改回資料庫裡的內容。`);
   document.body.append(el);
   el.addEventListener('click', () => el.remove());
-}
-
-function keepScroll(root: HTMLElement): () => void {
-  // Kept as a share of the full width, so a resized window keeps the same years in view.
-  const saved = [...root.querySelectorAll<HTMLElement>('[data-scroll]')].map(
-    (el) => [el.dataset.scroll, el.scrollLeft / Math.max(1, el.scrollWidth)] as const,
-  );
-  return () => {
-    for (const [name, share] of saved) {
-      const el = root.querySelector<HTMLElement>(`[data-scroll="${name}"]`);
-      if (el) el.scrollLeft = share * el.scrollWidth;
-    }
-  };
-}
-
-function wire(root: HTMLElement, deps: AppDeps, first: boolean): void {
-  const board = root.querySelector<HTMLElement>('[data-scroll="board"]');
-  const goals = root.querySelector<HTMLElement>('[data-scroll="goals"]');
-  if (board) {
-    dragSlides(board);
-    wheelSlides(board, '.lanes');
-    if (first) board.scrollLeft = leftFor(deps.today().year, scaleFor(root.clientWidth));
-  }
-  if (goals) dragSlides(goals);
 }

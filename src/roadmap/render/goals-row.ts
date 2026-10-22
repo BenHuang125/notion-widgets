@@ -4,7 +4,7 @@ import { slashDate as slash } from '../core/dates';
 import { type GoalStatus, goalStatus, sortGoals } from '../core/goals';
 import type { Card, Goal } from '../core/types';
 import { h, icon, paletteColor, s } from './dom';
-import { wheelSlides } from './pan';
+import { dragSlides, wheelSlides } from './pan';
 
 const RING_SIZE = 60;
 const RING_RADIUS = 25;
@@ -103,5 +103,6 @@ export function goalsRow(
   );
   add.addEventListener('click', events.onAdd);
   wheelSlides(list);
+  dragSlides(list);
   return h('section', { class: 'goals', 'aria-label': '目標' }, list, add);
 }
