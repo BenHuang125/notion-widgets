@@ -1,7 +1,8 @@
 <title>金魚池</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-  /* Layout: a single 3:1 banner stage centred on a paper ground; caption sits under it. */
+  /* Layout: the pond fills the whole window (the Notion embed box), whatever size it is dragged to.
+     #inspect keeps a framed stage with its controls underneath. */
   :root{
     --ground:#ECE5D7;        /* page around the banner */
     --ink:#5B5246;           /* caption ink */
@@ -17,6 +18,10 @@
          box-shadow:0 1px 0 var(--hair);background:#F3EEE3}
   #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer;touch-action:none}
   #cap{margin:0;font:13px/1.5 var(--font-cap);letter-spacing:.08em;opacity:.7}
+  body:not(.inspect){overflow:hidden}
+  body:not(.inspect) #wrap{padding:0;gap:0;height:100%}
+  body:not(.inspect) #stage{width:100%;height:100%;aspect-ratio:auto;box-shadow:none}
+  body:not(.inspect) #cap{display:none}
   #err{position:absolute;inset:0;display:none;place-items:center;font:15px/1.6 var(--font-cap);text-align:center;padding:16px}
   /* #inspect: one fish, free 360° view */
   .inspect #stage{aspect-ratio:16/10;width:min(100%,calc((100vh - 200px)*1.6))}
@@ -31,7 +36,7 @@
 </style>
 <main id="wrap">
   <div id="stage"><canvas id="c"></canvas><div id="err">這台瀏覽器無法開啟 3D 繪圖（WebGL2），請用新版 Chrome、Edge 或 Safari。</div></div>
-  <p id="cap">點水面撒飼料　·　點金魚牠會逃開　·　3:1 橫幅預覽</p>
+  <p id="cap"></p>
 </main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}</script>
 <script type="module">
@@ -54,9 +59,11 @@ function curve(pts,u){const f=clamp(u,0,1)*(pts.length-1),i=Math.min(pts.length-
   return .5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t*t+(-p0+3*p1-3*p2+p3)*t*t*t);}   // Catmull-Rom
 
 /* ═════════════ 1. stage, renderer, cameras ═════════════ */
-const WW=15, WH=5;                                  // world is 15 × 5 units → fixed 3:1 banner
 const stage=document.getElementById('stage'), canvas=document.getElementById('c');
 const INSPECT=location.hash==='#inspect'; if(INSPECT) document.body.classList.add('inspect');
+// the world is 5 units tall and as wide as the window's shape (the pond fills the embed box); #inspect keeps 3:1
+const ASP=INSPECT?3:Math.min(8,Math.max(1.5,(stage.clientWidth||1500)/(stage.clientHeight||500)));
+const WH=5, WW=WH*ASP;
 let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas,antialias:true}); if(!renderer.capabilities.isWebGL2) throw 0;}
 catch(e){document.getElementById('err').style.display='grid'; throw e;}
@@ -85,14 +92,14 @@ const simMat=new THREE.ShaderMaterial({
       float l=texture2D(tS,vUv-vec2(tx.x,0.)).r,r=texture2D(tS,vUv+vec2(tx.x,0.)).r,
             d=texture2D(tS,vUv-vec2(0.,tx.y)).r,u=texture2D(tS,vUv+vec2(0.,tx.y)).r;
       float h=((l+r+d+u)*.5-s.g)*damp;
-      for(int i=0;i<${MAXD};i++){ if(i>=nd) break; vec2 dd=(vUv-drops[i].xy)*vec2(3.,1.); h+=drops[i].w*exp(-dot(dd,dd)/(drops[i].z*drops[i].z)); }
+      for(int i=0;i<${MAXD};i++){ if(i>=nd) break; vec2 dd=(vUv-drops[i].xy)*vec2(${ASP.toFixed(4)},1.); h+=drops[i].w*exp(-dot(dd,dd)/(drops[i].z*drops[i].z)); }
       float edge=min(min(vUv.x,1.-vUv.x)*3.,min(vUv.y,1.-vUv.y)); h*=mix(.9,1.,smoothstep(0.,.03,edge));
       gl_FragColor=vec4(h,s.r,0.,1.);
     }`
 });
 simScene.add(new THREE.Mesh(quadGeo,simMat));
 const gpuW={a:null,b:null,w:0,h:0,queue:[],
-  init(cssW){ this.w=clamp(Math.round(cssW/1.7),300,920); this.h=Math.round(this.w/3);
+  init(cssW){ this.w=clamp(Math.round(cssW/1.7),300,920); this.h=Math.round(this.w/ASP);
     for(const k of ['a','b']){ if(this[k]) this[k].dispose();
       this[k]=new THREE.WebGLRenderTarget(this.w,this.h,{type:THREE.HalfFloatType,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:false});
       renderer.setRenderTarget(this[k]); renderer.setClearColor(0x000000,1); renderer.clear(); }
@@ -105,7 +112,7 @@ const gpuW={a:null,b:null,w:0,h:0,queue:[],
     const t=this.a; this.a=this.b; this.b=t;
   }
 };
-const cpuW={gw:150,gh:50,a:new Float32Array(7500),b:new Float32Array(7500),
+const cpuW={gw:Math.round(WW*10),gh:50,a:new Float32Array(Math.round(WW*10)*50),b:new Float32Array(Math.round(WW*10)*50),
   step(){const g=this.gw,A=this.a,B=this.b;
     for(let y=1;y<this.gh-1;y++)for(let x=1;x<g-1;x++){const i=y*g+x; B[i]=((A[i-1]+A[i+1]+A[i-g]+A[i+g])*.5-B[i])*.95;}
     this.a=B; this.b=A;},
@@ -130,7 +137,7 @@ const bed=new THREE.Mesh(new THREE.PlaneGeometry(WW,WH),new THREE.ShaderMaterial
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
   fragmentShader:`uniform vec2 seed;varying vec2 vUv;${GLSL_NOISE}
     void main(){
-      vec2 p=vUv*vec2(15.,5.)+seed;
+      vec2 p=vUv*vec2(${WW.toFixed(4)},5.)+seed;
       vec2 q=p*.3; vec2 w=vec2(fbm(q+3.1),fbm(q+7.7));
       float m1=fbm(q+w*1.7), m2=fbm(q*1.35+w.yx*1.3+11.);
       float wash1=smoothstep(.5,.7,m1), wash2=smoothstep(.54,.74,m2);
@@ -1113,7 +1120,9 @@ function drawPlants(){
 /* ═════════════ 11. sizing ═════════════ */
 let cssW=0,cssH=0;
 function resize(){
-  const w=Math.round(stage.clientWidth),h=Math.round(w/(INSPECT?1.6:3)); if(!w||(w===cssW&&h===cssH)) return;
+  const w=Math.round(stage.clientWidth),h=INSPECT?Math.round(w/1.6):Math.round(stage.clientHeight); if(!w||!h||(w===cssW&&h===cssH)) return;
+  // the box was dragged to a clearly different shape: rebuild the pond for it (layout, plants and water all follow the shape)
+  if(!INSPECT&&Math.abs(Math.min(8,Math.max(1.5,w/h))/ASP-1)>.04){clearTimeout(resize.t);resize.t=setTimeout(()=>location.reload(),500);return;}
   cssW=w;cssH=h; renderer.setSize(w,h,false);
   const pr=renderer.getPixelRatio();
   if(underRT) underRT.dispose();
