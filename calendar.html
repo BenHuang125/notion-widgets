@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calendar</title>
 <style>
-  :root{--bg:#F7F6F3;--head:#9A9384;--headText:#FFFFFF;--text:#55534E;--dim:#D3D1CB;--today:#9A9384;--todayText:#FFFFFF}
-  @media (prefers-color-scheme: dark){:root{--bg:#262523;--head:#6E685E;--headText:#F1EEE8;--text:#D6D3CD;--dim:#55524C;--today:#B3AA99;--todayText:#1E1D1B}}
+  :root{--bg:#FFFFFF;--head:#F7F4EE;--headText:#2B2B2B;--text:#2B2B2B;--wd:#9A7652;--dim:#D8D2C8;--today:#9A7652;--todayText:#FFFFFF;--hover:#EFE7DC}
+  @media (prefers-color-scheme: dark){:root{--bg:#191919;--head:#252320;--headText:#EDE7DC;--text:#E6E1D8;--wd:#C29F78;--dim:#4E4A44;--today:#B8936A;--todayText:#191919;--hover:#33302B}}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
   .cal{width:100%;background:var(--bg)}
   .top{display:flex;align-items:center;justify-content:space-between;background:var(--head);color:var(--headText);padding:12px 14px;font-size:15px;font-weight:600}
   .top button{background:none;border:0;color:var(--headText);font-size:18px;cursor:pointer;width:28px;height:28px;border-radius:6px}
-  .top button:hover{background:rgba(255,255,255,.15)}
+  .top button:hover{background:var(--hover)}
   .grid{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 10px 12px;row-gap:4px}
-  .wd{text-align:center;font-size:12px;color:var(--text);font-weight:600;padding:6px 0}
+  .wd{text-align:center;font-size:12px;color:var(--wd);font-weight:600;padding:6px 0}
   .d{text-align:center;font-size:13px;color:var(--text);padding:8px 0;border-radius:6px}
   .d.o{color:var(--dim)}
   .d.t{background:var(--today);color:var(--todayText);font-weight:700}
