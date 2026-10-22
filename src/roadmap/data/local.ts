@@ -30,7 +30,7 @@ export function browserPersist(storage: Storage | null = safeLocalStorage()): Pe
 }
 
 /** Some browsers throw on merely reading `localStorage` (blocked site data). */
-function safeLocalStorage(): Storage | null {
+export function safeLocalStorage(): Storage | null {
   try {
     return window.localStorage;
   } catch {
