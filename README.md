@@ -3,6 +3,7 @@ Small widgets embedded in Ben's Notion homepage.
 - `quotes.html` — rotating quotes (30s)
 - `calendar.html` — mini calendar
 - `roadmap.html` — five-year plan: goal rings on top, Path of life (ages 27 → 32) below
+- `pond.html` — goldfish pond banner at the top of the Homepage (replaces the cover image); click water to feed, click a fish to scare it
 
 ## Where the goal data comes from
 Content is edited in Notion, never in code: the tables **五年目標** and **人生路線圖**
