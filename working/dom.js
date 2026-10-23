@@ -1,5 +1,5 @@
 // Working calendar — shared app state and small DOM helpers.
-import { readState, writeState } from './core.js?v=1';
+import { readState, writeState } from './core.js?v=2';
 
 const storage = (() => {
   try {

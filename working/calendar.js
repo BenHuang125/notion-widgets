@@ -1,6 +1,6 @@
 // Working calendar — month grid, hover card, drag to move, event dialog.
-import { addDays, dayKey, fmt, monthCells, monthStart, parseKey, projectColor, today, uid } from './core.js?v=1';
-import { $, app, h, say } from './dom.js?v=1';
+import { addDays, dayKey, fmt, monthCells, monthStart, parseKey, projectColor, today, uid } from './core.js?v=2';
+import { $, app, h, say } from './dom.js?v=2';
 
 const MAX_CHIPS = 3;
 const DRAG_START_PX = 8; // same threshold as the roadmap (vis-timeline)
@@ -157,8 +157,9 @@ function openEditor({ id, date }) {
   $('evTitle').value = ev?.title ?? '';
   $('evBody').value = ev?.body ?? '';
   $('evDate').value = ev?.date ?? date;
-  const chosen = ev?.projectId ?? app.state.projects[0]?.id;
-  $('evProject').replaceChildren(...app.state.projects.map((p) =>
+  const shown = app.state.projects.filter((p) => !p.hidden || p.id === ev?.projectId);
+  const chosen = ev?.projectId ?? shown[0]?.id;
+  $('evProject').replaceChildren(...shown.map((p) =>
     h('option', { value: p.id, selected: p.id === chosen }, p.name)));
   syncDot();
   $('evDelete').hidden = !ev;

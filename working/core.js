@@ -43,18 +43,55 @@ export function projectColor(order) {
   return `hsl(${hue} 18% 62%)`;
 }
 
-/** Project names from the Notion embed link: #projects=A,B,C (the part after # never reaches GitHub). */
+/**
+ * Projects from the Notion embed link (the part after # never reaches GitHub):
+ *   #projects=個人,<notionId>|Library|HSG 研究圖書館,…
+ * Each item is `name`, or `notionId|name` for a row of the Notion 專案 Projects database,
+ * optionally followed by `|old name` aliases so a project renamed in Notion keeps its events.
+ * Each item is URI-encoded on its own, so names may contain commas.
+ */
 export function projectsFromHash(hash) {
   const m = /(?:^#|&)projects=([^&]*)/.exec(hash || '');
   if (!m) return [];
-  return decodeURIComponent(m[1]).split(',').map((s) => s.trim()).filter(Boolean);
+  return m[1].split(',').map((raw) => {
+    const parts = safeDecode(raw).split('|').map((s) => s.trim());
+    const nid = /^[0-9a-f]{32}$/i.test(parts[0]) ? parts.shift().toLowerCase() : null;
+    return { nid, name: parts[0] ?? '', aliases: parts.slice(1).filter(Boolean) };
+  }).filter((p) => p.name);
+}
+function safeDecode(s) {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
 }
 
-/** Adds new names at the end; existing projects keep their order (and so their colour). */
-export function mergeProjects(projects, names, makeId) {
-  const known = new Set(projects.map((p) => p.name));
-  const added = names.filter((n) => !known.has(n));
-  return projects.concat(added.map((name, i) => ({ id: makeId(), name, order: projects.length + i })));
+/**
+ * Brings the saved projects in line with the link. A project is matched by its Notion id first,
+ * then by name or an old name; a match is renamed in place (same id, order and colour, so its events
+ * follow). New projects join at the end with the next colour. Projects missing from the link are
+ * hidden from the menu, not deleted, so old events keep their colour.
+ */
+export function mergeProjects(projects, items, makeId) {
+  const out = projects.map((p) => ({ ...p }));
+  const used = new Set();
+  const free = (p) => !used.has(p.id);
+  for (const it of items) {
+    let p = it.nid ? out.find((q) => q.nid === it.nid) : undefined;
+    p ??= out.find((q) => free(q) && !q.nid && q.name === it.name);
+    p ??= out.find((q) => free(q) && !q.nid && it.aliases.includes(q.name));
+    if (!p) {
+      p = { id: makeId(), name: it.name, order: out.length };
+      out.push(p);
+    }
+    p.name = it.name;
+    if (it.nid) p.nid = it.nid;
+    delete p.hidden;
+    used.add(p.id);
+  }
+  if (items.length) for (const p of out) if (!used.has(p.id)) p.hidden = true;
+  return out;
 }
 
 /* ---------- storage ---------- */

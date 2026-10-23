@@ -128,6 +128,31 @@ check('review text kept after reload', (await page.textContent('#review')).inclu
 check('day opens on today again', (await page.isVisible('#tdToday')) === false);
 const orders = await page.evaluate(() => JSON.parse(localStorage.getItem('working.v1')).projects.map((p) => `${p.name}:${p.order}`).join());
 check('new project joins at the end, old ones keep their colour', orders === 'Alpha:0,Beta:1,Gamma:2', `${dotBefore} -> ${orders}`);
+
+// Notion 專案 rows: matched by Notion id, renamed in place (old name as alias the first time), removed ones hidden
+const N1 = 'a'.repeat(32);
+const N2 = 'b'.repeat(32);
+const projectsSaved = () => page.evaluate(() => JSON.parse(localStorage.getItem('working.v1')).projects);
+const menu = async () => {
+  await page.click(`.day[data-date="${key(today)}"]`);
+  const names = await page.locator('#evProject option').allTextContents();
+  await page.keyboard.press('Escape');
+  return names.join();
+};
+const betaId = (await projectsSaved()).find((p) => p.name === 'Beta').id;
+const link = (items) => `${base}#projects=${items.map(encodeURIComponent).join(',')}`;
+await page.goto(link(['Alpha', `${N1}|Beta two|Beta`, `${N2}|Gamma`]));
+await page.reload();
+await page.waitForSelector('body.ready');
+let ps = await projectsSaved();
+check('renamed project keeps its id and colour', ps.find((p) => p.nid === N1)?.id === betaId && ps.find((p) => p.nid === N1)?.order === 1, JSON.stringify(ps));
+check('menu shows the new names', (await menu()) === 'Alpha,Beta two,Gamma', await menu());
+await page.goto(link(['Alpha', `${N1}|Beta, renamed again`]));
+await page.reload();
+await page.waitForSelector('body.ready');
+ps = await projectsSaved();
+check('a later rename follows the Notion id (comma in a name is fine)', ps.find((p) => p.id === betaId)?.name === 'Beta, renamed again', JSON.stringify(ps));
+check('a project removed in Notion leaves the menu but keeps its data', (await menu()) === 'Alpha,Beta, renamed again' && ps.some((p) => p.name === 'Gamma' && p.hidden), JSON.stringify(ps));
 check('no script errors', errors.length === 0, errors.join(' | '));
 check('no error bar shown', !(await page.isVisible('#err')));
 
