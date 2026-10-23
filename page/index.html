@@ -12,6 +12,29 @@
 <main id="roadmap"><p class="loading">正在讀取你的路線圖…</p></main>
 <!--SCRIPTS-->
 <script>
+// Always the newest version: GitHub Pages lets browsers (and Notion) keep this page for up to
+// 10 minutes after an update. Ask the server, bypassing that copy, which program file is
+// current; if it is not the one running here, reopen once at an address no copy exists for.
+(function () {
+  var running = document.querySelector('script[type="module"]');
+  var mine = running ? running.getAttribute('src') : '';
+  fetch(location.pathname + '?fresh=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.text() : ''; })
+    .then(function (html) {
+      var m = html.match(/<script type="module" src="([^"]+)"/);
+      if (!m || m[1] === mine) return;
+      try {
+        if (sessionStorage.getItem('roadmap-updated-to') === m[1]) return;
+        sessionStorage.setItem('roadmap-updated-to', m[1]);
+      } catch (e) { /* no storage: the address change below still differs each version */ }
+      var next = new URL(location.href);
+      next.searchParams.set('u', m[1].replace(/[^A-Za-z0-9]/g, ''));
+      location.replace(next.toString());
+    })
+    .catch(function () { /* offline: keep the copy we have */ });
+})();
+</script>
+<script>
 // If the program file never arrives (network, an old cached page), say so instead of waiting.
 setTimeout(function () {
   var waiting = document.querySelector('#roadmap > .loading');

@@ -240,6 +240,17 @@ try {
   await held.goto(url);
   await held.waitForSelector('.goal', { timeout: 3000 });
   check(true, 'draws even when screen frames are held back');
+
+  // An old copy of the page reopens itself once when a newer version is on the server.
+  const stale = await browser.newPage();
+  await stale.route('**/index.html?fresh=*', async (route) => {
+    const res = await route.fetch();
+    const html = (await res.text()).replace(/js\/roadmap\.[A-Z0-9]+\.js/, 'js/roadmap.NEWER123.js');
+    await route.fulfill({ response: res, body: html });
+  });
+  await stale.goto(`${url}index.html`);
+  await stale.waitForURL(/[?&]u=jsroadmapNEWER123js/, { timeout: 5000 });
+  check(true, 'old cached page switches to the newest version');
 } finally {
   await browser.close();
   server.close();
