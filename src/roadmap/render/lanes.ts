@@ -20,6 +20,8 @@ export interface LaneEvents {
 }
 
 const SEGMENT_ROW_PX = 26;
+/** The track's name sits on its own line above the bars, so it never covers a short bar. */
+const TRACK_LABEL_PX = 18;
 
 function cake(age: number): SVGElement {
   return s(
@@ -85,7 +87,7 @@ function trackLane(track: Track, plan: Plan, scale: Scale, events: LaneEvents): 
   const { placed, rows } = placeSegments(mine);
   const lane = h('div', {
     class: 'lane-body track-body',
-    style: `height:${rows * SEGMENT_ROW_PX}px`,
+    style: `height:${TRACK_LABEL_PX + rows * SEGMENT_ROW_PX}px`,
   });
   for (const p of placed) {
     const left = scale.x(p.from);
@@ -94,7 +96,7 @@ function trackLane(track: Track, plan: Plan, scale: Scale, events: LaneEvents): 
       {
         type: 'button',
         class: 'segment',
-        style: `left:${left}px;width:${scale.x(p.to) - left}px;top:${p.row * SEGMENT_ROW_PX}px;--c:${paletteColor(p.segment.color)}`,
+        style: `left:${left}px;width:${scale.x(p.to) - left}px;top:${TRACK_LABEL_PX + p.row * SEGMENT_ROW_PX}px;--c:${paletteColor(p.segment.color)}`,
         title: `${p.segment.name}（${rangeLabel(p.segment.start, p.segment.end)}）`,
       },
       h('span', { class: 'segment-name' }, p.segment.name),
