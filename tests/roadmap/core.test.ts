@@ -11,14 +11,16 @@ import {
 import {
   ageInYear,
   birthdays,
+  dayLabel,
   daysInMonth,
   FIRST_YEAR,
   LAST_YEAR,
+  monthLabel,
   monthStart,
   monthsFromStart,
   parseIsoDate,
   parseYearMonth,
-  slashDate,
+  rangeLabel,
   toIsoDate,
 } from '../../src/roadmap/core/dates';
 import { goalStatus, nextGoalColor, sortGoals } from '../../src/roadmap/core/goals';
@@ -80,7 +82,10 @@ describe('dates', () => {
     expect(() => parseIsoDate('2027-02-29')).toThrow();
     expect(parseIsoDate('2028-02-29')).toEqual({ year: 2028, month: 2, day: 29 });
     expect(toIsoDate({ year: 2026, month: 9, day: 3 })).toBe('2026-09-03');
-    expect(slashDate('2026-09-03')).toBe('2026/9/3');
+    expect(dayLabel('2026-09-03')).toBe('3 Sep 2026');
+    expect(dayLabel('2027-01-31')).toBe('31 Jan 2027');
+    expect(monthLabel('2026-12')).toBe('Dec 2026');
+    expect(rangeLabel('2017-09', '2021-06')).toBe('Sep 2017 – Jun 2021');
   });
 });
 

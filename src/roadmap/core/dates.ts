@@ -104,8 +104,36 @@ export const yearCount = (): number => LAST_YEAR - FIRST_YEAR + 1;
 
 export const compareDays = (a: IsoDate, b: IsoDate): number => (a < b ? -1 : a > b ? 1 : 0);
 
-/** "2026/9/30": how dates read on the page. */
-export function slashDate(iso: IsoDate): string {
+/** Month names as the page shows them (Ben's choice: English, day–month–year order). */
+export const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+const monthName = (month: number): string => MONTH_NAMES[month - 1] ?? '';
+
+/** "30 Sep 2026": how a day reads on the page. */
+export function dayLabel(iso: IsoDate): string {
   const d = parseIsoDate(iso);
-  return `${d.year}/${d.month}/${d.day}`;
+  return `${d.day} ${monthName(d.month)} ${d.year}`;
 }
+
+/** "Sep 2017": how a month reads on the page. */
+export function monthLabel(ym: YearMonth): string {
+  const { year, month } = parseYearMonth(ym);
+  return `${monthName(month)} ${year}`;
+}
+
+/** "Sep 2017 – Jun 2021": a time range. */
+export const rangeLabel = (start: YearMonth, end: YearMonth): string =>
+  `${monthLabel(start)} – ${monthLabel(end)}`;

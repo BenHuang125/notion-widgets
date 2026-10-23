@@ -2,7 +2,7 @@
 // Every row can be dragged (by its handle) above or below the axis.
 
 import { placeSegments } from '../core/board';
-import { birthdays, monthsFromStart, parseIsoDate, slashDate } from '../core/dates';
+import { birthdays, dayLabel, monthsFromStart, parseIsoDate, rangeLabel } from '../core/dates';
 import { goalStatus } from '../core/goals';
 import type { LayerId, Plan, Segment, Track } from '../core/types';
 import { h, icon, paletteColor, s } from './dom';
@@ -72,7 +72,7 @@ function flagsLane(plan: Plan, scale: Scale): HTMLElement {
           'span',
           { class: 'flag-text' },
           h('b', {}, goal.title),
-          h('span', {}, `完成 ${slashDate(st.on)}`),
+          h('span', {}, `完成 ${dayLabel(st.on)}`),
         ),
       ),
     );
@@ -95,9 +95,10 @@ function trackLane(track: Track, plan: Plan, scale: Scale, events: LaneEvents): 
         type: 'button',
         class: 'segment',
         style: `left:${left}px;width:${scale.x(p.to) - left}px;top:${p.row * SEGMENT_ROW_PX}px;--c:${paletteColor(p.segment.color)}`,
-        title: `${p.segment.name}（${p.segment.start} – ${p.segment.end}）`,
+        title: `${p.segment.name}（${rangeLabel(p.segment.start, p.segment.end)}）`,
       },
-      h('span', {}, p.segment.name),
+      h('span', { class: 'segment-name' }, p.segment.name),
+      h('span', { class: 'segment-range' }, rangeLabel(p.segment.start, p.segment.end)),
     );
     bar.addEventListener('click', () => events.onSegment(p.segment));
     lane.append(bar);
