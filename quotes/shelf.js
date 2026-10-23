@@ -33,6 +33,7 @@ function renderShelf(){var items=shelfLoad(),n=items.length;shelfList.textConten
   if(shelfEditing==='new') shelfList.appendChild(editor(null));
   items.forEach(function(q,i){shelfList.appendChild(shelfEditing===q.id?editor(q):pair(q,n-i))});
   if(!n&&shelfEditing!=='new'){var em=el('p','shelf-empty','No quotes yet — press + to add your first one.');shelfList.appendChild(em)}
+  var ed=shelfList.querySelector('form.editing');if(ed&&ed._ready)ed._ready();
   if(!shelfCanSave){var w=el('p','shelf-warn','This browser is blocking storage, so changes will be lost when the page closes.');shelfList.prepend(w)}}
 function pair(q,no){var a=el('article','pair');a.dataset.id=q.id;
   var d=el('div','pd'),l=el('div','pl');
@@ -63,7 +64,7 @@ function editor(q){var a=el('form','pair editing'),d=el('div','pd'),l=el('div','
     else items.unshift({id:shelfNewId(),h:h,b:b,at:Date.now()});
     shelfEditing=null;shelfSave(items);renderShelf();
     var first=shelfList.querySelector('.pair');if(!q&&first){first.classList.add('fresh');shelfList.scrollTop=0}});
-  setTimeout(function(){grow(th);grow(tb);th.focus()},0);return a}
+  a._ready=function(){grow(th);grow(tb);th.focus()};return a}
 function removeQuote(id){var items=shelfLoad(),gone=items.find(function(x){return x.id===id});if(!gone)return;
   shelfSave(items.filter(function(x){return x.id!==id}));renderShelf();
   shelfUndo=gone;toast('Quote deleted',function(){if(!shelfUndo)return;var cur=shelfLoad();cur.push(shelfUndo);shelfUndo=null;shelfSave(cur);renderShelf()})}
