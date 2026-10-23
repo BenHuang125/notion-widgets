@@ -58,17 +58,17 @@ describe('store kept in the browser', () => {
     await expect(store.put('goals', 'g', goal)).rejects.toThrow('先不存檔');
     expect(m.saved()).toBe('{broken');
   });
-  it('round-trips a backup and refuses text that is not one', async () => {
-    const store = makeStore(null);
+  it('saves in the format it reads back, and refuses text that is not one', async () => {
+    const m = memoryPersist();
+    const store = makeStore(m.persist);
     store.subscribe(
       () => undefined,
       () => undefined,
     );
     await store.put('goals', 'g', goal);
-    const text = store.exportText();
-    expect(fromBackup(text).rows.goals.get('g')).toEqual(goal);
+    expect(fromBackup(m.saved() ?? '').rows.goals.get('g')).toEqual(goal);
     expect(() => fromBackup('hello')).toThrow('不是備份');
     expect(() => fromBackup('{"version":2}')).toThrow('版本');
-    expect(store.mode).toBe('memory');
+    expect(makeStore(null).mode).toBe('memory');
   });
 });

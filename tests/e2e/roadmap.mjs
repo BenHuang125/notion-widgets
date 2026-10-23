@@ -201,25 +201,7 @@ try {
   await page.waitForSelector('.goal');
   check((await page.locator('.goal').count()) === 3, 'plan survives a reload');
 
-  // Backup: copy out, paste back (asks first, shows what gets replaced).
-  await page.click('.backup-btn');
-  const text = await page.inputValue('#backup-out');
-  check(text.includes('範例目標 C'), 'backup holds the plan');
-  const one = JSON.parse(text);
-  one.goals = { only: { title: '只有一個', target: '2030-01-01', color: 'teal' } };
-  await page.fill('#backup-in', JSON.stringify(one));
-  await page.click('.dlg .btn-primary');
-  check(
-    (await page.textContent('.dlg')).includes('換成：1 個目標'),
-    'paste asks first with counts',
-  );
-  await page.click('.dlg .btn-danger');
-  await page.waitForFunction(() => document.querySelectorAll('.goal').length === 1);
-  check(true, 'pasted backup replaces the plan');
-  await page.click('.backup-btn');
-  await page.fill('#backup-in', '不是備份');
-  await page.click('.dlg .btn-primary');
-  check((await page.textContent('.dlg-error')).includes('不是備份'), 'wrong paste is refused');
+  check((await page.locator('h1, .backup-btn').count()) === 0, 'no title row or backup button');
 
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`);
 

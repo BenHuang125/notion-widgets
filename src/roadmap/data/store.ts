@@ -31,10 +31,6 @@ export interface Store {
   put(kind: Kind, id: string, row: Row): Promise<void>;
   remove(kind: Kind, id: string): Promise<void>;
   putLayout(row: Row): Promise<void>;
-  /** Everything, as backup text Ben can keep and paste back. */
-  exportText(): string;
-  /** Replaces everything with a backup; rejects with a readable reason if it is not one. */
-  importText(text: string): Promise<void>;
 }
 
 type Rows = Record<Kind, Map<string, Row>>;
@@ -158,7 +154,7 @@ export function makeStore(persist: Persist | null): Store {
           unreadable = null;
         } catch (e) {
           unreadable = e instanceof Error ? e.message : String(e);
-          fail(`存在這台電腦的資料讀不出來：${unreadable}。可以從「備份」貼回之前的備份。`);
+          fail(`存在這台電腦的資料讀不出來：${unreadable}。為了不蓋掉它，先不存任何改動。`);
         }
       };
       load();
@@ -179,14 +175,6 @@ export function makeStore(persist: Persist | null): Store {
       commit(() => {
         c.layout = row;
       }),
-    exportText: () => toBackup(c),
-    async importText(text) {
-      const next = fromBackup(text);
-      unreadable = null;
-      await commit(() => {
-        c = next;
-      });
-    },
   };
 }
 

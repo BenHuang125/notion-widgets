@@ -1,4 +1,4 @@
-// Puts the page together. The frame (header, goal row, sliding board) is built once; each change
+// Puts the page together. The frame (goal row, sliding board) is built once; each change
 // to the plan redraws, at most once per screen frame, only the pieces whose data changed.
 
 import { cardsByYear, normalizeLayout } from '../core/board';
@@ -7,7 +7,6 @@ import { GOAL_PALETTE } from '../core/goals';
 import type { Goal, LayerId, PaletteKey, Plan } from '../core/types';
 import { type Actions, makeActions } from '../data/actions';
 import type { Snapshot, Store } from '../data/store';
-import { backupDialog } from './backup';
 import { closeDialog } from './dialog';
 import { h, icon } from './dom';
 import { cardForm, doneForm, goalForm, segmentForm, trackForm } from './forms';
@@ -54,19 +53,10 @@ export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
   const notices = h('div', { class: 'notices' });
   const goalsSlot = h('div', { class: 'goals-slot' });
   const loading = h('p', { class: 'loading' }, '正在讀取你的路線圖…');
-  const backup = h('button', { type: 'button', class: 'btn btn-plain backup-btn' }, '備份');
-  backup.addEventListener('click', () => backupDialog(deps.store, plan()));
-  const head = h(
-    'header',
-    { class: 'top' },
-    h('h1', {}, '人生路線圖'),
-    h('p', { class: 'sub' }),
-    backup,
-  );
-  root.replaceChildren(head, notices, goalsSlot, loading);
+  root.replaceChildren(notices, goalsSlot, loading);
   dragSlides(shell.board);
   wheelSlides(shell.board, '.lanes');
-  const draw = drawer({ root, deps, actions, state, shell, notices, goalsSlot, loading, head });
+  const draw = drawer({ root, deps, actions, state, shell, notices, goalsSlot, loading });
   let frame = 0;
   /** Many snapshots in one moment (several collections, pending then confirmed) = one redraw. */
   const schedule = (): void => {
@@ -107,7 +97,6 @@ interface DrawParts {
   readonly notices: HTMLElement;
   readonly goalsSlot: HTMLElement;
   readonly loading: HTMLElement;
-  readonly head: HTMLElement;
 }
 
 function drawer(p: DrawParts): () => void {
@@ -121,8 +110,6 @@ function drawer(p: DrawParts): () => void {
   let shownWidth = 0;
   return () => {
     const today = p.deps.today();
-    const sub = p.head.querySelector('.sub');
-    if (sub) sub.textContent = `${today.year} 年 ${today.month} 月 ${today.day} 日`;
     placeChildren(p.notices, noticeList(p.state, p.deps.store.mode));
     if (!p.state.loaded) return;
     const scale = scaleFor(p.root.clientWidth);
@@ -231,7 +218,7 @@ function noticeList(state: State, mode: Store['mode']): HTMLElement[] {
   }
   const plan = state.snap.plan;
   if (state.loaded && !plan.goals.length && !plan.cards.length && !plan.tracks.length) {
-    out.push(h('p', { class: 'notice' }, '還沒有資料：按右上角「備份」貼上備份，或直接新增目標。'));
+    out.push(h('p', { class: 'notice' }, '還沒有資料：滑到目標列右邊按「＋」新增第一個目標。'));
   }
   const skipped = state.snap.skipped;
   if (skipped.length) {
