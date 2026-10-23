@@ -15,3 +15,7 @@
 11. GitHub Pages 會讓瀏覽器把主頁留 10 分鐘：主頁裡的小程式打開時用 `cache: no-store` 問伺服器目前的程式檔，不同就換網址重開一次；所以上線後不用改 Notion 嵌入網址。
 12. 首頁語錄框（`quotes.html`＋`quotes/core.js`、`chameleon.js`、`scene.js`，依序載入、共用變數）：世界進度（房子、樹…）只由真實時間推算（`worldAt`，起點台北 2026-10-23），不靠存檔；心情與摸摸次數存 localStorage `frame-spirit.v1`（不准改名）；改這裡跑 `node tests/e2e/quotes.mjs`；改程式要把 `quotes.html` 的 `?v=` 和 Notion 嵌入網址的 `?v=` 一起加 1。
 13. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
+14. Working 頁日曆（`working.html`＋`working/*.js`，ES module）：資料只存 localStorage `working.v1`（不准改名；events、todos 以日期分、reviews 以週次分、projects）；
+    專案名稱從 Notion 嵌入網址 `#projects=A,B,C` 帶入（`#` 後不送 GitHub，專案名不寫進 repo），新名稱接在最後、舊專案顏色不變（顏色依加入順序，用路線圖同一組柔和色）；
+    代辦和日曆完全分開；週回顧 Week 1 = 2026-09-04（週五起算）；字體與顏色沿用路線圖（`--serif` 數字、`--sans` 文字），只有淺色；
+    改這裡跑 `node tests/e2e/working.mjs`（沙盒下載不到瀏覽器時加 `PW_CHROMIUM=<已安裝的 chromium 路徑>`）；改程式要把各檔 import 與 `working.html` 的 `?v=` 一起加 1。

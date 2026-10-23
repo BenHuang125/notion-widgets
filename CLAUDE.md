@@ -14,6 +14,7 @@ Ben 的 人生路線圖。**公開** repo：`BenHuang125/notion-widgets`（Ben 2
   - `render/`：`app` 組頁、`axis` 時間軸（蛋糕、小旗、蝸牛）、`keep` 只重畫變動處、`goals-row` 目標圈、`timeline` 時間軸與卡片欄、`lanes` 上下各層、`cards`、`forms`、`dialog`、`pan` 拖曳與滾輪、`reorder` 拖曳換層
   - `style.css`：整頁樣式（build.py 內嵌進主頁）
 - 首頁語錄框：`quotes.html` 與 `quotes/`（`core` 時間、世界進度、需求與活動；`chameleon` 變色龍與魔法光點；`scene` 畫框、天空、房子樹池塘、主迴圈），見 `DEV_RULES.md` 第 12 條。
+- Notion「Working」頁日曆：`working.html` 與 `working/`（`core` 日期、週次、專案配色、存取；`dom` 共用狀態；`calendar` 月曆、滑過小框、拖移、新增對話框；`side` 當天代辦、週回顧；`main` 啟動），見 `DEV_RULES.md` 第 14 條。
 - 測試清單、儲存名稱、模組規則：見 `DEV_RULES.md`。
 - 絕對不能進 repo 的個人資料：Ben 的目標、卡片、時間段（只存在他瀏覽器裡，Notion 內嵌的那份）。repo 是公開的，測試只用範例資料。
 - 儲存名稱（不准改）：localStorage `life-roadmap.v1`，備份格式 version 1（goals、cards、tracks、segments、layout）。

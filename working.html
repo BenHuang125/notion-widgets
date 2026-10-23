@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Working Calendar</title>
+<style>
+/* Notion「Working」頁的日曆（Ben 2026-10-23）：左 月曆，右 當天＋代辦＋週回顧。
+   字體、顏色跟首頁人生路線圖同一套：系統字寫中文、Georgia 系寫數字，柔和配色，只有淺色。 */
+:root{
+  color-scheme:light;
+  --bg:#f7f6f3; --card:#ffffff; --ink:#37352f; --text:#55534e; --soft:#8f897d; --faint:#b6b0a5;
+  --line:#e4e0d8; --line-strong:#c9c3b8; --brown:#976d57; --hover:#edeae4;
+  --p-moss:#5f8a73; --t-rose:#a86f6f; --t-slate:#5f7088; --danger:#a65a4f;
+  --glass:rgb(255 255 255 / .74); --glass-edge:rgb(255 255 255 / .9);
+  --lift:0 1px 2px rgb(55 53 47 / .06),0 8px 24px rgb(55 53 47 / .12);
+  --serif:"Noto Serif TC",Georgia,"Times New Roman",serif;
+  --sans:-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",Helvetica,Arial,sans-serif;
+  --fs-xs:.6875rem; --fs-s:.78125rem; --fs-m:.875rem; --fs-l:1rem;
+  --radius:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs-m)/1.6 var(--sans)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brown);outline-offset:2px}
+.num-font{font-family:var(--serif)}
+.wrap{padding:16px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.err{background:#fbefed;color:var(--danger);border-radius:6px;padding:6px 10px;margin-bottom:10px;font-size:var(--fs-s)}
+.layout{display:grid;grid-template-columns:minmax(0,2.15fr) minmax(280px,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:1fr}}
+.head{display:flex;align-items:center;gap:6px;margin-bottom:10px;min-height:30px}
+.title{font:600 var(--fs-l)/1.3 var(--sans);margin:0}
+.nav{margin-left:auto;display:flex;gap:2px;align-items:center}
+.icon-btn{border:0;background:transparent;border-radius:6px;width:28px;height:28px;display:grid;place-items:center;color:var(--soft);font-size:var(--fs-l)}
+.icon-btn:hover{background:var(--hover);color:var(--ink)}
+.icon-btn:disabled{opacity:.35;cursor:default;background:transparent}
+.pill{border:1px solid var(--line-strong);background:var(--card);border-radius:999px;padding:0 11px;height:26px;font-size:var(--fs-s);color:var(--text)}
+.pill:hover{background:var(--hover)}
+.pill[hidden]{display:none}
+
+/* month grid */
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dow{font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--soft);padding:6px 8px;border-bottom:1px solid var(--line)}
+.day{min-height:104px;padding:4px 5px 6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer}
+.day:nth-child(7n){border-right:0}
+.day:hover{background:#fbfaf8}
+.day.other{background:#fbfaf8}
+.day.other .num b{color:var(--faint)}
+.day.drop{background:#f3ece6;box-shadow:inset 0 0 0 1.5px var(--brown)}
+.num{display:flex;justify-content:space-between;align-items:center;height:22px;padding:0 2px}
+.num b{font:400 var(--fs-m) var(--serif);color:var(--text)}
+.day.today .num b{background:var(--brown);color:#fff;border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;padding:0 6px;font-size:var(--fs-s)}
+.plus{opacity:0;color:var(--faint)}
+.day:hover .plus{opacity:1}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
+.chip{display:flex;align-items:center;gap:6px;width:100%;border:0;text-align:left;padding:1px 6px;border-radius:5px;font-size:var(--fs-s);line-height:19px;color:var(--ink);background:color-mix(in srgb,var(--c) 16%,var(--card));cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;min-width:0}
+.chip:hover{background:color-mix(in srgb,var(--c) 24%,var(--card))}
+.chip .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip.lifted{opacity:.3}
+.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;box-shadow:var(--lift);cursor:grabbing}
+.more{border:0;background:transparent;font-size:var(--fs-xs);color:var(--soft);text-align:left;padding:0 6px}
+.more:hover{color:var(--ink);text-decoration:underline}
+
+/* hover card: frosted glass, attached to the event by CSS anchor positioning */
+.hovercard{inset:auto;margin:6px 0;width:240px;padding:11px 13px;border:1px solid var(--glass-edge);border-radius:10px;background:var(--glass);
+  -webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:var(--lift);color:var(--ink);pointer-events:none;
+  position-anchor:--hover-ev;position-area:block-end span-inline-end;position-try-fallbacks:flip-block,flip-inline,flip-block flip-inline}
+.hovercard:popover-open{animation:fade .12s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:none}}
+.hc-proj{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:var(--soft)}
+.hc-title{font-weight:600;font-size:var(--fs-m);margin:3px 0 1px;word-break:break-word}
+.hc-date{font:var(--fs-s) var(--serif);color:var(--soft)}
+.hc-body{font-size:var(--fs-s);color:var(--text);margin-top:7px;padding-top:7px;border-top:1px solid rgb(55 53 47 / .08);white-space:pre-wrap;word-break:break-word}
+.hc-body:empty{display:none}
+
+/* right column */
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.date-sub{font:var(--fs-s) var(--serif);color:var(--soft)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 12px 8px}
+.box-label{font-size:var(--fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;display:flex;gap:8px}
+.box-label .count{font-family:var(--serif);letter-spacing:0;color:var(--faint)}
+.todos{list-style:none;margin:0;padding:0}
+.todo{display:flex;align-items:flex-start;gap:9px;padding:4px 3px;border-radius:5px}
+.todo:hover{background:var(--hover)}
+.todo input{appearance:none;flex:none;width:15px;height:15px;margin:3px 0 0;border:1.5px solid var(--faint);border-radius:4px;background:var(--card);display:grid;place-items:center;cursor:pointer}
+.todo input:checked{background:var(--brown);border-color:var(--brown)}
+.todo input:checked::after{content:"";width:7px;height:3.5px;border:2px solid #fff;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
+.todo .tx{flex:1;min-width:0;word-break:break-word}
+.todo.done .tx{color:var(--faint);text-decoration:line-through}
+.todo .del{opacity:0;border:0;background:none;color:var(--faint);padding:0 4px;font-size:var(--fs-l);line-height:1}
+.todo:hover .del,.todo .del:focus-visible{opacity:1}
+.todo .del:hover{color:var(--danger)}
+.empty{color:var(--faint);padding:3px}
+.add-row{display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
+.add-row span{color:var(--faint);width:15px;text-align:center}
+.add-row input{flex:1;min-width:0;border:0;background:transparent;outline:none;padding:3px 0}
+.add-row input::placeholder{color:var(--faint)}
+.rv-range{font:var(--fs-s) var(--serif);color:var(--soft)}
+.palette{display:flex;gap:6px;margin:2px 0 8px}
+.swatch{width:16px;height:16px;border-radius:50%;padding:0;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line-strong);background:var(--c)}
+.swatch:hover{box-shadow:0 0 0 1px var(--ink)}
+.review{margin:0;padding:4px 4px 6px 22px;min-height:110px;outline:none;line-height:1.75}
+.review li::marker{color:var(--soft)}
+.review.blank li:only-child::after{content:"Type here…";color:var(--faint)}
+.review [data-c="2"]{color:var(--brown)} .review [data-c="3"]{color:var(--t-rose)} .review [data-c="4"]{color:var(--p-moss)}
+.review [data-c="5"]{color:var(--t-slate)} .review [data-c="6"]{color:var(--soft)}
+
+/* dialogs */
+dialog{border:0;border-radius:12px;padding:0;width:min(420px,calc(100% - 32px));background:var(--card);color:var(--ink);box-shadow:0 20px 50px rgb(55 53 47 / .2)}
+dialog::backdrop{background:rgb(55 53 47 / .18)}
+dialog[open]{animation:fade .14s ease-out}
+.dlg{display:flex;flex-direction:column;gap:12px;padding:16px 18px}
+.dlg-top{display:flex;align-items:center;font-size:var(--fs-s);color:var(--soft)}
+.dlg-top .icon-btn{margin-left:auto}
+.f-title{border:0;outline:none;padding:0;width:100%;font-size:var(--fs-l);font-weight:600}
+.f-title::placeholder{color:var(--faint);font-weight:400}
+.field{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:10px;font-size:var(--fs-s)}
+.field>span:first-child{color:var(--soft)}
+.field select,.field input{border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--card);width:100%;font-size:var(--fs-m)}
+.pick{display:flex;align-items:center;gap:8px}
+textarea{border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-height:84px;resize:vertical;width:100%;outline:none}
+textarea:focus,.field select:focus,.field input:focus{border-color:var(--brown)}
+.actions{display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--line-strong);background:var(--card);border-radius:6px;padding:4px 12px;font-size:var(--fs-s)}
+.btn:hover{background:var(--hover)}
+.btn.primary{margin-left:auto;background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.danger{border-color:transparent;color:var(--danger);padding-left:2px}
+.btn.danger.armed{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn[hidden]{display:none}
+.day-list{display:flex;flex-direction:column;gap:4px}
+.day-list .chip{cursor:pointer}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="err" id="err" role="alert" hidden></div>
+  <div class="layout">
+    <section aria-label="Calendar">
+      <div class="head">
+        <h2 class="title" id="calTitle"></h2>
+        <div class="nav">
+          <button class="pill" type="button" id="calToday">Today</button>
+          <button class="icon-btn" type="button" id="calPrev" aria-label="Previous month">‹</button>
+          <button class="icon-btn" type="button" id="calNext" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <aside class="side">
+      <div>
+        <div class="head">
+          <div><h2 class="title" id="tdWeekday"></h2><div class="date-sub" id="tdDate"></div></div>
+          <div class="nav">
+            <button class="pill" type="button" id="tdToday" hidden>Today</button>
+            <button class="icon-btn" type="button" id="tdPrev" aria-label="Previous day">‹</button>
+            <button class="icon-btn" type="button" id="tdNext" aria-label="Next day">›</button>
+          </div>
+        </div>
+        <div class="box">
+          <p class="box-label">To-do <span class="count" id="tdCount"></span></p>
+          <ul class="todos" id="todoList"></ul>
+          <form class="add-row" id="todoForm"><span aria-hidden="true">+</span><input id="todoInput" placeholder="Add a to-do" autocomplete="off" aria-label="Add a to-do"></form>
+        </div>
+      </div>
+      <div>
+        <div class="head">
+          <div><h2 class="title" id="rvWeek"></h2><div class="rv-range" id="rvRange"></div></div>
+          <div class="nav">
+            <button class="icon-btn" type="button" id="rvPrev" aria-label="Previous week">‹</button>
+            <button class="icon-btn" type="button" id="rvNext" aria-label="Next week">›</button>
+          </div>
+        </div>
+        <div class="box">
+          <div class="palette" id="palette" aria-label="Text colour"></div>
+          <ul class="review" id="review" contenteditable="true" aria-label="Weekly review"></ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="hovercard" id="hovercard" popover="manual" role="tooltip"></div>
+<div class="sr" id="live" aria-live="polite"></div>
+
+<dialog id="evDlg" closedby="any">
+  <form class="dlg" id="evForm">
+    <div class="dlg-top"><span id="evMode">New event</span><button class="icon-btn" type="button" id="evClose" aria-label="Close">✕</button></div>
+    <input class="f-title" id="evTitle" placeholder="Title" required maxlength="80" autocomplete="off" aria-label="Title">
+    <label class="field"><span>Project</span><span class="pick"><i class="dot" id="evDot"></i><select id="evProject"></select></span></label>
+    <label class="field"><span>Date</span><input type="date" id="evDate" required></label>
+    <textarea id="evBody" placeholder="Details" aria-label="Details"></textarea>
+    <div class="actions">
+      <button class="btn danger" type="button" id="evDelete">Delete</button>
+      <button class="btn" type="button" id="evCancel">Cancel</button>
+      <button class="btn primary" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dayDlg" closedby="any">
+  <div class="dlg">
+    <div class="dlg-top"><span id="dayDlgTitle"></span><button class="icon-btn" type="button" id="dayDlgClose" aria-label="Close">✕</button></div>
+    <div class="day-list" id="dayDlgList"></div>
+    <div class="actions"><button class="btn primary" type="button" id="dayDlgAdd">+ New event</button></div>
+  </div>
+</dialog>
+
+<script type="module" src="working/main.js?v=1"></script>
+</body>
+</html>
