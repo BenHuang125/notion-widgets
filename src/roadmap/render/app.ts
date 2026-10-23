@@ -57,12 +57,17 @@ export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
   dragSlides(shell.board);
   wheelSlides(shell.board, '.lanes');
   const draw = drawer({ root, deps, actions, state, shell, notices, goalsSlot, loading });
-  let frame = 0;
-  /** Many snapshots in one moment (several collections, pending then confirmed) = one redraw. */
+  let queued = false;
+  /**
+   * Several changes in one step = one redraw, right after the step (a microtask). Not tied to
+   * screen frames: inside Notion the page is a cross-origin frame, and browsers may hold back
+   * animation frames there (Safari until the frame is clicked), which left it stuck on loading.
+   */
   const schedule = (): void => {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
+    if (queued) return;
+    queued = true;
+    queueMicrotask(() => {
+      queued = false;
       draw();
     });
   };
@@ -82,7 +87,6 @@ export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
   schedule();
   return () => {
     stop();
-    cancelAnimationFrame(frame);
     closeDialog();
     window.removeEventListener('resize', schedule);
   };
