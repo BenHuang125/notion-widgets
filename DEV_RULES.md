@@ -17,6 +17,6 @@
 13. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
 14. Working 頁日曆（`working.html`＋`working/*.js`，ES module）：資料只存 localStorage `working.v1`（不准改名；events、todos 以日期分、reviews 以週次分、projects）；
     專案從 Notion 嵌入網址 `#projects=` 帶入（`#` 後不送 GitHub，專案名不寫進 repo）：每項各自 URI 編碼、逗號分隔，格式 `名稱` 或 `Notion頁面id|名稱|舊名…`；先用 Notion id 對、再用名稱或舊名對，對到就原地改名（id、顏色、事件不變），新的接在最後，網址裡沒有的只從選單藏起來、資料保留（`core.js` 的 `mergeProjects`）；
-    嵌入網址由排程任務「Working 日曆專案同步」照 Notion「專案 Projects」資料庫更新（「個人」固定在最前、沒有 id）；
+    嵌入網址照 Notion「專案 Projects」資料庫（collection://004c5855-6db5-48a0-923c-dc988e3aefc6）更新：「個人」固定在最前、沒有 id；已有的 id 保留順序與舊名，新的接在最後；網址前段加 `?v=` 讓瀏覽器拿新版程式；
     代辦和日曆完全分開；週回顧 Week 1 = 2026-09-04（週五起算）；字體與顏色沿用路線圖（`--serif` 數字、`--sans` 文字），只有淺色；
     改這裡跑 `node tests/e2e/working.mjs`（沙盒下載不到瀏覽器時加 `PW_CHROMIUM=<已安裝的 chromium 路徑>`）；改程式要把各檔 import 與 `working.html` 的 `?v=` 一起加 1。
