@@ -852,6 +852,13 @@ button {
 </head>
 <body>
 <main id="roadmap"><p class="loading">正在讀取你的路線圖…</p></main>
-<script type="module" src="js/roadmap.AEFRDUXL.js"></script>
+<script type="module" src="js/roadmap.PPIZ6CYW.js"></script>
+<script>
+// If the program file never arrives (network, an old cached page), say so instead of waiting.
+setTimeout(function () {
+  var waiting = document.querySelector('#roadmap > .loading');
+  if (waiting) waiting.textContent = '路線圖沒有載入成功。請重新整理 Notion（⌘R）；還是不行就截圖給 Claude。';
+}, 8000);
+</script>
 </body>
 </html>

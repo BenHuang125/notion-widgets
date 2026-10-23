@@ -215,6 +215,16 @@ try {
   await fresh.reload();
   await fresh.waitForSelector('.goal');
   check((await fresh.locator('.goal').count()) === 2, 'and stays after a reload');
+
+  // Inside Notion the browser may hold back screen frames: the page must still draw.
+  const held = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  await held.addInitScript((seed) => {
+    window.requestAnimationFrame = () => 0;
+    localStorage.setItem('life-roadmap.v1', JSON.stringify({ version: 1, ...seed, layout: null }));
+  }, SEED);
+  await held.goto(url);
+  await held.waitForSelector('.goal', { timeout: 3000 });
+  check(true, 'draws even when screen frames are held back');
 } finally {
   await browser.close();
   server.close();
