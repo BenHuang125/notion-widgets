@@ -9,6 +9,7 @@
   {"id": "roadmap-backup", "desc": "資料存瀏覽器，重新整理還在；備份複製與貼回（2026-10-23 依 Ben 要求移除備份按鈕）", "passes": true},
   {"id": "roadmap-seed", "desc": "第一次打開從嵌入網址帶入資料，只用一次、不蓋掉已有資料", "passes": true},
   {"id": "quotes-frame", "desc": "語錄框：上深咖啡下淺咖啡（胡桃木字）、木畫框；變色龍在畫框上依真實時間蓋房種樹、隨心情變色、點它看心情、重開會接續", "passes": true},
+  {"id": "quotes-shelf", "desc": "語錄框上的發光書架：點了在框裡打開語錄收藏（深咖啡主句＋淺咖啡說明一組、最新在前），可新增／修改／刪除（可復原）；新增後框上馬上換成新的，其他分頁也跟著換；資料存瀏覽器 quote-shelf.v1", "passes": true},
   {"id": "roadmap-axis", "desc": "時間軸整合：蛋糕（煙顯示年紀）與目標小旗（尚未完成／完成＋日期）都在線上，小旗避開蛋糕", "passes": true},
   {"id": "working-project-sync", "desc": "Working 日曆 Project 選單跟 Notion 專案資料庫同步：改名原地更新（排程與顏色不變）、新增出現、移除只從選單藏起來", "passes": true}
 ]

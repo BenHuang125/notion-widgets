@@ -42,7 +42,56 @@ html,body{height:100%;overflow:hidden}
 #world{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #widget.over{cursor:pointer}
 
-@media (prefers-reduced-motion:reduce){.ch,.qline{transition:none}}
+#widget.shelf-over{cursor:pointer}
+/* ── 語錄收藏（點書架打開，蓋在整個框上） ── */
+#shelf{position:absolute;inset:0;z-index:5;background:var(--page);display:flex;flex-direction:column;opacity:0;transform:scale(.97);transform-origin:96% 0;transition:opacity .25s ease,transform .25s ease}
+#shelf.open{opacity:1;transform:none}
+#shelf[hidden]{display:none}
+#shelf textarea{user-select:text;-webkit-user-select:text}
+.shelf-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 2px;border-bottom:1px solid var(--line)}
+.shelf-head h2{margin:0;font:600 15px/1 var(--serif);color:var(--topBg);letter-spacing:.01em}
+.shelf-head .count{font:12px var(--ui);color:var(--muted)}
+.shelf-head .sp{flex:1}
+.ibtn{width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--topBg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.ibtn:hover{background:#F3EDE3}
+.ibtn:focus-visible,.tool:focus-visible,.ebtn:focus-visible,.undo:focus-visible{outline:2px solid var(--gold,#C9A36A);outline-offset:1px}
+.ibtn svg{width:16px;height:16px}
+#shelfAdd{background:var(--topBg);color:var(--topText)}
+#shelfAdd:hover{background:#5A4130}
+#shelfList{flex:1 1 auto;overflow-y:auto;padding:8px 2px 12px;scrollbar-width:thin;scrollbar-color:#D8C9B2 transparent}
+.pair{margin:0 0 7px;border-radius:3px;overflow:hidden;box-shadow:0 1px 0 rgba(63,43,29,.08)}
+.pd{background:var(--topBg);display:flex;align-items:baseline;gap:10px;padding:7px 10px 7px 12px}
+.pl{background:var(--lowBg);display:flex;align-items:baseline;gap:12px;padding:5px 12px 6px 42px}
+.no{flex:0 0 20px;font:600 11px var(--serif);color:#C9A36A;font-variant-numeric:tabular-nums}
+.ph{flex:1;margin:0;font:600 14.5px/1.35 var(--serif);color:var(--topText)}
+.pb{flex:1;margin:0;font:italic 13px/1.4 var(--serif);color:var(--lowText)}
+.at{flex:0 0 auto;font:11px var(--serif);color:#9A8572;font-variant-numeric:tabular-nums}
+.tools{flex:0 0 auto;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.pair:hover .tools,.pair:focus-within .tools{opacity:1}
+.tool{width:24px;height:24px;border:0;border-radius:5px;background:transparent;color:#E6D3B4;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.tool:hover{background:rgba(255,255,255,.12);color:#FFF}
+.tool svg{width:14px;height:14px}
+.pair.fresh{animation:fresh 1.6s ease}
+@keyframes fresh{0%{box-shadow:0 0 0 2px rgba(201,163,106,.9),0 0 16px rgba(230,190,110,.7)}100%{box-shadow:0 1px 0 rgba(63,43,29,.08)}}
+.editing .pd{padding:6px 10px 6px 12px}
+.editing .pl{padding:6px 12px 7px 12px;flex-wrap:wrap}
+.editing textarea{width:100%;resize:none;overflow:hidden;border:0;background:transparent;padding:2px 0;margin:0;outline:none}
+.eh{font:600 14.5px/1.35 var(--serif);color:var(--topText)}
+.eh::placeholder{color:rgba(251,246,236,.45)}
+.eb{font:italic 13px/1.4 var(--serif);color:var(--lowText)}
+.eb::placeholder{color:rgba(106,74,52,.5)}
+textarea.bad::placeholder{color:#E8A0A0}
+.ebar{flex:1 0 100%;display:flex;align-items:center;gap:6px;padding-top:4px}
+.ehint{flex:1;font:11px var(--ui);color:#9A8572}
+.ebtn{border:0;border-radius:5px;padding:4px 12px;font:12px var(--ui);background:var(--topBg);color:var(--topText);cursor:pointer}
+.ebtn.ghost{background:transparent;color:var(--lowText)}
+.ebtn.ghost:hover{background:rgba(74,52,38,.08)}
+.shelf-empty,.shelf-warn{margin:14px 4px;font:italic 13px var(--serif);color:var(--muted)}
+.shelf-warn{color:var(--accent);font-style:normal;font-family:var(--ui);font-size:12px}
+#shelfToast{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:6;display:flex;gap:12px;align-items:center;background:#2B2622;color:#FBF6EC;font:12px var(--ui);padding:6px 8px 6px 12px;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#shelfToast[hidden]{display:none}
+.undo{border:0;background:transparent;color:#E6C88F;font:600 12px var(--ui);cursor:pointer;padding:2px 4px}
+@media (prefers-reduced-motion:reduce){.ch,.qline,#shelf{transition:none}.pair.fresh{animation:none}}
 </style>
 </head>
 <body>
@@ -54,9 +103,20 @@ html,body{height:100%;overflow:hidden}
   </div>
   <canvas id="world"></canvas>
   <div id="err" hidden></div>
+  <section id="shelf" hidden aria-label="Quote shelf">
+    <div class="shelf-head">
+      <button class="ibtn" id="shelfBack" title="Back to the frame" aria-label="Back to the frame"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <h2>Quote Shelf</h2><span class="count" id="shelfCount"></span><span class="sp"></span>
+      <button class="ibtn" id="shelfAdd" title="Add a quote" aria-label="Add a quote"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    </div>
+    <div id="shelfList"></div>
+  </section>
+  <div id="shelfToast" role="status" hidden></div>
 </div>
-<script src="quotes/core.js?v=7"></script>
-<script src="quotes/chameleon.js?v=7"></script>
-<script src="quotes/scene.js?v=7"></script>
+<script src="quotes/data.js?v=8"></script>
+<script src="quotes/core.js?v=8"></script>
+<script src="quotes/chameleon.js?v=8"></script>
+<script src="quotes/scene.js?v=8"></script>
+<script src="quotes/shelf.js?v=8"></script>
 </body>
 </html>

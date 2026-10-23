@@ -1,16 +1,6 @@
 // Notion 首頁語錄框（quotes.html）的程式，分三個檔、依序載入、共用全域變數。
 "use strict";
-/* ───────── 語錄 ───────── */
-var QUOTES=[
- {h:"Don't try to predict the future. Build a life that allows you to benefit from the unexpected.",
-  b:"The aim isn't to get everything right, but to put yourself in a position where, even when things don't go to plan, you can still come out ahead."},
- {h:"Small failures are the price of learning. It's when you suppress them or refuse to learn from them that the real damage is done.",
-  b:"Don't shy away from setbacks. Small setbacks are part of what builds resilience and protects you from being brought down by a much bigger failure later on."},
- {h:"Look for opportunities where the downside is limited but the upside is potentially unlimited.",
-  b:"Before making a decision, ask yourself: what's the most I could lose, and how much could I stand to gain? Prioritise opportunities where the potential reward far outweighs the risk."},
- {h:"Don't waste your energy worrying about things that are beyond your control.",
-  b:"You can't change everyone's mind, and you certainly can't reason with everyone. Know where your influence ends, and learn to let go of what you cannot change."}
-];
+/* ───────── 語錄：來自書架收藏（quotes/data.js 的 QUOTES，最新的在最前面） ───────── */
 var QUOTE_MS=30000;
 
 /* ───────── 小工具 ───────── */
@@ -62,12 +52,12 @@ function layout(){
   panel.style.left=G.ix+'px';panel.style.top=G.iy+'px';panel.style.width=G.iw+'px';panel.style.height=G.ih+'px';
   fitQuote()}
 function X(frac){return G.fx+G.fw*frac}
-var SLOT={tree1:.055,swing:.085,house:.19,mailbox:.262,garden:.34,fence:.34,bench:.465,easel:.545,pond:.64,cairn:.715,tree2:.795,birdhouse:.795,lantern:.905};
+var SLOT={tree1:.055,swing:.085,house:.19,mailbox:.262,garden:.34,fence:.34,bench:.465,easel:.545,pond:.64,cairn:.715,tree2:.795,birdhouse:.795,lantern:.905,shelf:.962};
 var PROJ_SLOT={tree1:'tree1',house:'house',garden:'garden',pond:'pond',bench:'bench',lantern:'lantern',chimney:'house',
   swing:'swing',tree2:'tree2',birdhouse:'tree2',mailbox:'mailbox',fence:'garden',repaint:'house',replant:'garden'};
 
 /* ───────── 語錄字母（精靈可挪動） ───────── */
-var qTop=document.getElementById('qTop'),qBot=document.getElementById('qBot'),qi=Math.floor(Math.random()*QUOTES.length),displaced=[];
+var curQuoteId=null,qTop=document.getElementById('qTop'),qBot=document.getElementById('qBot'),qi=firstQuote(),displaced=[];
 function spanify(el,text){el.textContent='';
   text.split(' ').forEach(function(word,wi){
     if(wi) el.appendChild(document.createTextNode(' '));
@@ -80,9 +70,19 @@ function fitQuote(){if(!G.iw)return;var w=G.iw-68,th=G.ih*.54,bh=G.ih-th-1;
   fitLine(qTop,Math.max(9,Math.min(21,(th-8)/1.3)),w,9);
   qBot.classList.remove('wrap');var bmax=Math.max(8,Math.min(14.5,(bh-11)/1.4));
   if(!fitLine(qBot,bmax,w,Math.min(10,bmax))){qBot.classList.add('wrap');fitLine(qBot,Math.max(8,Math.min(bmax,(bh-11)/2.8)),1e9,8)}}
-function setQuote(i){qi=i;displaced=[];spanify(qTop,QUOTES[i].h);spanify(qBot,QUOTES[i].b);fitQuote()}
+function quoteAt(i){return QUOTES[i]||EMPTY_QUOTE}
+function setQuote(i){qi=QUOTES.length?((i%QUOTES.length)+QUOTES.length)%QUOTES.length:0;displaced=[];var q=quoteAt(qi);curQuoteId=q.id;spanify(qTop,q.h);spanify(qBot,q.b);fitQuote()}
+function swapQuote(i){qTop.classList.add('fade');qBot.classList.add('fade');
+  setTimeout(function(){setQuote(i);qTop.classList.remove('fade');qBot.classList.remove('fade')},750)}
+// 書架有改動（這個框或同一個 Notion 的其他分頁）：有新加的語錄就馬上換上它，否則留在原本那句（被改了就換成新字）
+function reloadQuotes(){var oldAt=QUOTES[0]?QUOTES[0].at:-Infinity;QUOTES=shelfLoad();
+  if(QUOTES.length&&QUOTES[0].at>oldAt){shelfMarkSeen(QUOTES[0].id);swapQuote(0);return}
+  var k=QUOTES.findIndex(function(q){return q.id===curQuoteId});
+  if(k>=0){if(QUOTES[k].h!==qTop.textContent||QUOTES[k].b!==qBot.textContent)swapQuote(k);else qi=k}else swapQuote(qi)}
+window.addEventListener('shelf-change',reloadQuotes);
+window.addEventListener('storage',function(e){if(e.key===SHELF_KEY||e.key===null)reloadQuotes()});
 function nextQuote(){qTop.classList.add('fade');qBot.classList.add('fade');
-  setTimeout(function(){setQuote((qi+1)%QUOTES.length);qTop.classList.remove('fade');qBot.classList.remove('fade');
+  setTimeout(function(){setQuote(qi+1);qTop.classList.remove('fade');qBot.classList.remove('fade');
     if(S&&!S.hidden&&Math.random()<.6) say(pick(['👀','✨','📖']))},750)}
 function letterPool(){var a=[].slice.call(qTop.querySelectorAll('.ch')).concat([].slice.call(qBot.querySelectorAll('.ch')));
   return a.filter(function(s){return /[A-Za-z]/.test(s.textContent)&&displaced.indexOf(s)<0})}

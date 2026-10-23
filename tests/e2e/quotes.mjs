@@ -31,7 +31,8 @@ function check(name, ok, detail = '') {
   if (!ok) failed++;
 }
 
-const browser = await chromium.launch();
+// PW_CHROMIUM: use an already-installed browser where Playwright cannot download its own
+const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
 const ctx = await browser.newContext({ viewport: { width: 1200, height: 240 } });
 // Fonts come from Google; the test must not depend on the network.
 await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
@@ -154,6 +155,65 @@ await page.reload();
 await page.waitForTimeout(300);
 const sane = await page.evaluate(() => [S.v, S.anger]);
 check('ignores a broken or future-dated save', Number.isFinite(sane[0]) && sane[1] >= 0 && sane[1] <= 1, JSON.stringify(sane));
+
+// The glowing bookshelf opens the quote collection inside the frame; adding a quote puts it on the frame at once.
+await page.evaluate(() => localStorage.removeItem('quote-shelf.v1'));
+await page.reload();
+await page.waitForTimeout(500);
+const shelf = await page.evaluate(() => {
+  const b = shelfBox();
+  return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+});
+await page.mouse.click(shelf.x, shelf.y);
+await page.waitForTimeout(400);
+const opened = await page.evaluate(() => ({
+  open: !document.getElementById('shelf').hidden,
+  pairs: document.querySelectorAll('#shelfList .pair').length,
+  dark: getComputedStyle(document.querySelector('.pair .pd')).backgroundColor,
+  light: getComputedStyle(document.querySelector('.pair .pl')).backgroundColor,
+}));
+check(
+  'clicking the bookshelf opens the collection: dark row + light row per quote',
+  opened.open && opened.pairs === 4 && opened.dark === 'rgb(74, 52, 38)' && opened.light === 'rgb(234, 223, 207)',
+  JSON.stringify(opened),
+);
+await page.click('#shelfAdd');
+await page.keyboard.type('Sample quote for the test.');
+await page.keyboard.press('Enter');
+await page.keyboard.type('Sample explanation.');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+const firstRow = await page.textContent('#shelfList .pair .ph');
+check('a new quote is listed first', firstRow === 'Sample quote for the test.', String(firstRow));
+await page.click('#shelfBack');
+await page.waitForTimeout(1100);
+check('the frame shows the new quote right away', (await page.textContent('#qTop')) === 'Sample quote for the test.');
+await page.reload();
+await page.waitForTimeout(500);
+const kept = await page.evaluate(() => ({ n: QUOTES.length, first: QUOTES[0].h, shown: qTop.textContent }));
+check('the collection is kept after reopening', kept.n === 5 && kept.first === 'Sample quote for the test.', JSON.stringify(kept));
+// Another tab (same Notion page) adds a quote: this frame switches to it.
+const other = await ctx.newPage();
+await other.goto(url);
+await other.waitForTimeout(300);
+await other.evaluate(() => {
+  const it = shelfLoad();
+  it.unshift({ id: shelfNewId(), h: 'Added in another tab.', b: 'x', at: Date.now() });
+  shelfSave(it);
+});
+await page.waitForTimeout(1100);
+check('another tab adding a quote updates this frame', (await page.textContent('#qTop')) === 'Added in another tab.');
+await other.close();
+// Delete with undo.
+await page.evaluate(() => openShelf());
+await page.waitForTimeout(300);
+await page.evaluate(() => document.querySelector('#shelfList .pair .tool[aria-label="Delete quote"]').click());
+const afterDel = await page.evaluate(() => shelfLoad().length);
+await page.click('#shelfToast .undo');
+const afterUndo = await page.evaluate(() => shelfLoad().length);
+check('delete removes a quote and undo brings it back', afterDel === 5 && afterUndo === 6, `${afterDel} → ${afterUndo}`);
+await page.evaluate(() => closeShelf());
+await page.evaluate(() => localStorage.removeItem('quote-shelf.v1'));
 check('no errors during the run', errors.length === 0, errors.join(' | '));
 
 await browser.close();

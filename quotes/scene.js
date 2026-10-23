@@ -151,6 +151,32 @@ function drawBubble(p){var b=S.bubble;if(!b)return;var bx,by;
   ctx.beginPath();ctx.moveTo(-5,-3.4);ctx.lineTo(-8,2);ctx.lineTo(-1,-3.4);ctx.fill();
   ctx.font='11px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#000';ctx.fillText(b.e,0,-11.2);
   ctx.restore()}
+/* ───────── 發光書架（點下去打開語錄收藏，見 quotes/shelf.js） ───────── */
+var shelfHover=0,shelfHoverT=0;
+function shelfBox(){var k=Math.min(1,SKY/76),w=25,h=30*k,x=X(SLOT.shelf);return {x:x-w/2,y:G.fy-h,w:w,h:h}}
+function onShelf(x,y){var b=shelfBox();return x>=b.x-5&&x<=b.x+b.w+5&&y>=b.y-6&&y<=G.fy+2}
+function drawBookshelf(t){shelfHover+=(shelfHoverT-shelfHover)*.15;var b=shelfBox(),x=b.x,y=b.y,w=b.w,h=b.h,cx=x+w/2,pulse=.5+.5*Math.sin(S.t*1.6),glow=.6+.25*pulse+.35*shelfHover;
+  // 柔和的金色光暈（滑鼠移過去會更亮）
+  var r=34+8*pulse+12*shelfHover,g=ctx.createRadialGradient(cx,y+h*.5,2,cx,y+h*.5,r);
+  g.addColorStop(0,'rgba(255,214,130,'+(.85*glow).toFixed(3)+')');g.addColorStop(.45,'rgba(240,195,105,'+(.38*glow).toFixed(3)+')');g.addColorStop(1,'rgba(230,190,110,0)');
+  ctx.fillStyle=g;ctx.fillRect(cx-r,y+h*.5-r,2*r,2*r);
+  // 櫃身：深胡桃木外框、淺一點的背板
+  ctx.fillStyle='#3F2B1D';ctx.fillRect(x,y,w,h);
+  ctx.fillStyle='#FFE7B0';ctx.fillRect(x+2,y+2,w-4,h-4);
+  var gl=ctx.createLinearGradient(0,y,0,y+h);gl.addColorStop(0,'rgba(255,248,215,'+(.5*glow).toFixed(3)+')');gl.addColorStop(1,'rgba(255,200,110,'+(.3*glow).toFixed(3)+')');ctx.fillStyle=gl;ctx.fillRect(x+2,y+2,w-4,h-4);
+  // 兩層書：書背顏色沿用畫框的點綴色（酒紅、鼠尾草綠、藍灰、赭黃）
+  var cols=['#7A3036','#4D6355','#55617A','#A8793A','#6E2A30','#8E6A4B'],mid=y+h/2;
+  [[y+2,mid],[mid+1,y+h-2]].forEach(function(row,ri){var top=row[0],bot=row[1],bx=x+2.5,i=0;
+    while(bx<x+w-3){var bw=2+hash(ri*17+i)*1.6,bh=(bot-top)*(.62+hash(ri*31+i*7)*.34);if(bx+bw>x+w-2.5)break;
+      var lean=(ri===1&&i===3)?1:0;ctx.save();ctx.translate(bx+bw/2,bot);ctx.rotate(lean*.28);
+      ctx.fillStyle=cols[(i+ri*2)%cols.length];ctx.fillRect(-bw/2,-bh,bw,bh);
+      ctx.fillStyle='rgba(230,200,143,.8)';ctx.fillRect(-bw/2,-bh*.72,bw,.6);ctx.restore();
+      bx+=bw+.5+lean*1.2;i++}});
+  ctx.fillStyle='#5E4029';ctx.fillRect(x+1,mid-.5,w-2,1.5);
+  // 頂板與金邊
+  ctx.fillStyle='#4A3122';ctx.fillRect(x-1.5,y-2,w+3,2.5);ctx.strokeStyle='rgba(230,200,143,.85)';ctx.lineWidth=.6;ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+  // 偶爾飄出的小光點
+  if(Math.random()<.07+shelfHover*.12) sparkle(x+rnd(2,w-2),y+rnd(0,h*.6),1,5,9,1.2)}
 function draw(){var t=clock.now(),w=worldAt(t);
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
   drawSky(t);
@@ -160,6 +186,7 @@ function draw(){var t=clock.now(),w=worldAt(t);
   var k=Math.min(1,SKY/76);ctx.save();if(k<1){ctx.translate(0,G.fy);ctx.scale(1,k);ctx.translate(0,-G.fy)}
   drawTree(X(SLOT.tree1),g1,.45);drawTree(X(SLOT.tree2),g2*.85,.25);
   drawHouse(w,t);drawGarden(w);drawPond(w);drawProps(w,t);ctx.restore();
+  drawBookshelf(t);
   drawFrame();
   var p=curScr();
   if(!S.hidden){ctx.globalAlpha=S.tween&&S.tween.to.door?.55:1;drawSpirit(p.x,p.y,p.s,S.anim);ctx.globalAlpha=1}
