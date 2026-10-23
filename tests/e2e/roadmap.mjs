@@ -109,20 +109,36 @@ try {
   );
   if (shots) await page.screenshot({ path: `${shots}/roadmap-desktop.png`, fullPage: true });
 
-  // Tick the open card of goal B: asks for the date, then the goal is reached and a flag shows.
+  // Every goal has a flag on the axis from the start, marked not done yet.
+  const flagTexts = await page.$$eval('.flag-mark', (els) => els.map((e) => e.textContent));
+  check(
+    flagTexts.length === 2 && flagTexts.every((t) => t.includes('尚未完成')),
+    'each goal has a not-done flag on the axis',
+  );
+  check(
+    (await page.locator('.cake-mark .smoke').first().textContent()) === '18 yrs',
+    'cake smoke shows the age',
+  );
+  check((await page.locator('.cake-mark.is-round').count()) === 3, 'round birthdays are golden');
+  // Tick the open card of goal B: asks for the date, then its flag turns done with the date.
   await page.click('.card:not(.is-done) .tick >> nth=0');
   await page.fill('.dlg input[type=date]', '2026-10-20');
   await page.click('.dlg .btn-primary');
-  await page.waitForSelector('.flag-mark');
+  await page.waitForSelector('.flag-mark.is-reached');
   check(
-    (await page.textContent('.flag-text')).includes('20 Oct 2026'),
+    (await page.textContent('.flag-mark.is-reached')).includes('完成 20 Oct 2026'),
     'flag shows the last tick date',
   );
+  check((await page.locator('.flag-mark.just-reached').count()) === 1, 'flag rises once');
   check((await page.locator('.card.is-done').count()) === 2, 'card shows as done');
-  // Untick: back to open, flag goes away.
+  // Untick: the flag goes back to not done.
   await page.click('.card.is-done .tick >> nth=1');
-  await page.waitForFunction(() => !document.querySelector('.flag-mark'));
-  check(true, 'unticking removes the flag');
+  await page.waitForFunction(() => !document.querySelector('.flag-mark.is-reached'));
+  check(true, 'unticking turns the flag back to not done');
+  // Clicking a flag opens its goal.
+  await page.click('.flag-mark >> nth=0');
+  check((await page.textContent('.dlg h2')) === '編輯目標', 'flag opens the goal');
+  await page.keyboard.press('Escape');
 
   // Add a goal: lands in the right place, gets the next unused color.
   await page.hover('.goals');
@@ -159,7 +175,7 @@ try {
   const grip = page.locator('.lane-track .grip');
   await page.hover('.lane-track');
   const box = await grip.boundingBox();
-  const top = await page.locator('.lane-flags').boundingBox();
+  const top = await page.locator('.axis').boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + 5, top.y - 4, { steps: 8 });

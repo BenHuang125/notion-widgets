@@ -105,7 +105,8 @@ export const parseSegment = (id: string, row: Row): Parsed<Segment> =>
     };
   });
 
-const LAYER = /^(cakes|flags|track:.+)$/;
+/** Older layouts also listed 'cakes' and 'flags' rows; those now live on the axis and are dropped. */
+const LAYER = /^track:.+$/;
 const layers = (v: unknown): LayerId[] =>
   Array.isArray(v) ? v.filter((x): x is LayerId => typeof x === 'string' && LAYER.test(x)) : [];
 

@@ -1,5 +1,6 @@
-/* Layout: goal rings on top; below them one wide sheet that slides sideways — rows above the
-   axis, the axis, rows below it, then one column of cards per year (six years in view).
+/* Layout: goal rings on top; below them one wide sheet that slides sideways — track rows above
+   the axis, the axis (cakes, flags and today on one line), track rows below it, then one column
+   of cards per year (six years in view).
    Look: Ben's Notion homepage — warm paper, soft brown ink, muted goal colors. */
 :root {
   --bg: #f7f6f3;
@@ -25,6 +26,12 @@
   --p-moss: #5f8a73;
   --p-dusk: #8a8f9c;
   --p-sand: #bfae8e;
+  --cake: #f3e3d3;
+  --cake-icing: #e9b8b0;
+  --candle: #8fb3c9;
+  --flame: #f2b84b;
+  --gold: #d4a64a;
+  --now-band: rgb(151 109 87 / 0.045);
   --serif: "Noto Serif TC", Georgia, "Times New Roman", serif;
   --sans: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", Helvetica, Arial, sans-serif;
   --fs-xs: 0.6875rem;
@@ -50,6 +57,12 @@
     --warn: #e09455;
     --shade: rgb(0 0 0 / 0.5);
     --lift: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.35);
+    --cake: #5a4a40;
+    --cake-icing: #b98a84;
+    --candle: #7d9fb4;
+    --flame: #f5c25e;
+    --gold: #e0b45a;
+    --now-band: rgb(201 160 136 / 0.06);
     color-scheme: dark;
   }
 }
@@ -67,6 +80,12 @@
   --warn: #e09455;
   --shade: rgb(0 0 0 / 0.5);
   --lift: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.35);
+  --cake: #5a4a40;
+  --cake-icing: #b98a84;
+  --candle: #7d9fb4;
+  --flame: #f5c25e;
+  --gold: #e0b45a;
+  --now-band: rgb(201 160 136 / 0.06);
   color-scheme: dark;
 }
 
@@ -226,6 +245,8 @@ button {
   scrollbar-width: none;
   cursor: grab;
   margin-inline: -4px;
+  /* Soft edges hint that the sheet goes on to both sides. */
+  mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent);
 }
 .board.is-dragging {
   cursor: grabbing;
@@ -256,15 +277,6 @@ button {
   position: relative;
   flex: 0 0 100%;
 }
-.lane-flags .lane-body {
-  height: 48px;
-}
-.lane-flags .lane-body:empty {
-  height: 14px;
-}
-.lane-cakes .lane-body {
-  height: 40px;
-}
 .lane-track .lane-body {
   min-height: 26px;
 }
@@ -293,71 +305,6 @@ button {
   background: var(--brown);
   z-index: 6;
   pointer-events: none;
-}
-
-.mark {
-  position: absolute;
-  top: 0;
-  display: flex;
-  align-items: flex-end;
-}
-.cake-mark {
-  flex-direction: column;
-  align-items: center;
-  translate: -50% 0;
-  gap: 0;
-}
-.cake {
-  width: 24px;
-  height: 24px;
-}
-.cake-base {
-  fill: var(--p-clay);
-}
-.cake-top {
-  fill: var(--card);
-  stroke: var(--p-clay);
-  stroke-width: 1.2;
-}
-.cake-candle {
-  fill: var(--p-rose);
-}
-.cake-flame {
-  fill: var(--p-ochre);
-}
-.mark-label {
-  font-family: var(--serif);
-  font-size: var(--fs-s);
-  color: var(--brown);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.flag-mark {
-  gap: 4px;
-  translate: -6px 0;
-}
-.flag {
-  width: 26px;
-  height: 44px;
-  flex: none;
-}
-.flag-pole {
-  stroke: var(--ink);
-  stroke-width: 1.4;
-  fill: none;
-  stroke-linecap: round;
-}
-.flag-text {
-  display: flex;
-  flex-direction: column;
-  font-size: var(--fs-xs);
-  color: var(--soft);
-  white-space: nowrap;
-  padding-bottom: 4px;
-}
-.flag-text b {
-  color: var(--ink);
-  font-size: var(--fs-s);
 }
 
 .segment {
@@ -414,42 +361,77 @@ button {
   color: var(--brown);
 }
 
-/* The axis: year ticks, the past drawn in brown, today's snail. */
+/* The axis: one band. Bottom up: year labels, the line (past solid, future dashed), then cakes
+   standing on the line and flags planted in it. Positions are measured from the bottom, so a
+   band with lifted flags grows upward. */
 .axis {
+  --line-y: 30px;
   position: relative;
-  height: 62px;
+  height: 96px;
+}
+.axis-now-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--now-band);
+  border-radius: 10px;
+  pointer-events: none;
 }
 .axis-line {
   position: absolute;
-  inset: 22px 0 auto;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--line-y) - 8px);
   height: 16px;
   padding: 0;
   border: 0;
   background: transparent;
   cursor: copy;
 }
+/* The future: a soft dashed line. */
 .axis-line::before {
   content: "";
   position: absolute;
   inset: 7px 0 auto;
   height: 2px;
-  background: var(--line);
+  background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 11px);
+}
+/* Month ticks show only while the pointer is on the line. */
+.axis-line::after {
+  content: "";
+  position: absolute;
+  inset: 4px 0 auto;
+  height: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--line-strong) 0 1px,
+    transparent 1px var(--month)
+  );
+}
+.axis-line:hover::after {
+  opacity: 0.7;
 }
 .axis-past {
   position: absolute;
   left: 0;
-  top: 7px;
-  height: 2px;
+  top: 6px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--brown);
 }
 .axis-years {
   position: absolute;
-  inset: 40px 0 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20px;
   pointer-events: none;
 }
 .axis-year {
   position: absolute;
-  top: 0;
+  bottom: 0;
   text-align: center;
   font-family: var(--serif);
   font-size: var(--fs-m);
@@ -461,20 +443,151 @@ button {
   content: "";
   position: absolute;
   left: 0;
-  top: -16px;
+  bottom: 22px;
   width: 1px;
-  height: 9px;
+  height: 12px;
   background: var(--line-strong);
 }
 .axis-year.is-now {
   color: var(--brown);
   font-weight: 600;
 }
+
+/* Birthday cakes stand on the line; the candle flickers and smoke carries the age upward. */
+.cake-mark {
+  position: absolute;
+  bottom: calc(var(--line-y) + 1px);
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+.cake {
+  width: 24px;
+  height: 26px;
+  display: block;
+}
+.cake-base {
+  fill: var(--cake);
+}
+.cake-top {
+  fill: var(--cake-icing);
+}
+.cake-drip {
+  fill: none;
+  stroke: var(--cake-icing);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.cake-candle {
+  fill: var(--candle);
+}
+.cake-flame {
+  fill: var(--flame);
+  transform-origin: 14px 7px;
+}
+.cake-mark.is-round .cake {
+  width: 30px;
+  height: 32px;
+}
+.cake-mark.is-round .cake-base {
+  fill: var(--gold);
+}
+.cake-mark.is-round .cake-top {
+  fill: color-mix(in srgb, var(--gold) 45%, var(--card));
+}
+.cake-mark.is-round .cake-drip {
+  stroke: color-mix(in srgb, var(--gold) 45%, var(--card));
+}
+.smoke {
+  position: absolute;
+  bottom: 100%;
+  font-family: var(--serif);
+  font-size: var(--fs-xs);
+  color: var(--soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.cake-mark.is-round .smoke {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Flags: planted in the line at the goal's date; the cloth waves. Pale until reached. */
+.flag-mark {
+  --pole: calc(54px + var(--level) * 24px);
+  position: absolute;
+  bottom: calc(var(--line-y) - 1px);
+  width: 28px;
+  height: var(--pole);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  z-index: 2;
+}
+.flag-pole {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--ink);
+  opacity: 0.75;
+}
+.flag-cloth {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 26px;
+  height: 18px;
+  overflow: visible;
+  transform-origin: 0 50%;
+}
+.flag-cloth path {
+  fill: color-mix(in srgb, var(--c) 32%, var(--card));
+  stroke: color-mix(in srgb, var(--c) 60%, var(--card));
+  stroke-width: 0.8;
+}
+.flag-mark.is-reached .flag-cloth path {
+  fill: var(--c);
+  stroke: var(--c);
+}
+.flag-text {
+  position: absolute;
+  left: 32px;
+  top: -2px;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-xs);
+  color: var(--soft);
+  white-space: nowrap;
+  line-height: 1.35;
+}
+.flag-text b {
+  color: var(--ink);
+  font-size: var(--fs-s);
+}
+.flag-mark.is-reached .flag-text span {
+  color: var(--done);
+}
+.flag-mark:hover .flag-text b,
+.flag-mark:focus-visible .flag-text b {
+  color: var(--brown);
+}
+
+/* Today: the snail rides the line. */
 .now {
   position: absolute;
-  top: 3px;
+  bottom: calc(var(--line-y) + 1px);
   translate: -88% 0;
-  pointer-events: none;
+  z-index: 3;
 }
 .snail {
   width: 44px;
@@ -503,6 +616,9 @@ button {
   stroke-width: 1.7;
   stroke-linecap: round;
 }
+
+/* Movement, only for people who have not asked their computer for less of it. Smoke shows
+   still (and fully readable) when motion is reduced. */
 @media (prefers-reduced-motion: no-preference) {
   .snail-body {
     animation: stretch 2.6s ease-in-out infinite;
@@ -511,6 +627,19 @@ button {
   .snail-shell {
     animation: bob 2.6s ease-in-out infinite;
     transform-origin: 17px 21px;
+  }
+  .cake-flame {
+    animation: flicker 1.3s ease-in-out infinite alternate;
+  }
+  .smoke {
+    opacity: 0;
+    animation: smoke 4.5s ease-out var(--delay) infinite;
+  }
+  .flag-cloth {
+    animation: wave 2.4s ease-in-out infinite;
+  }
+  .flag-mark.just-reached {
+    animation: raise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
   }
 }
 @keyframes stretch {
@@ -521,6 +650,51 @@ button {
 @keyframes bob {
   50% {
     transform: translate(1.2px, -0.6px) rotate(-3deg);
+  }
+}
+@keyframes flicker {
+  0% {
+    transform: scale(1, 1) rotate(-3deg);
+  }
+  50% {
+    transform: scale(0.88, 1.12) rotate(2deg);
+  }
+  100% {
+    transform: scale(1.05, 0.92) rotate(-1deg);
+  }
+}
+@keyframes smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(0.85);
+  }
+  20% {
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, -20px) scale(1.05);
+  }
+}
+@keyframes wave {
+  0%,
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  30% {
+    transform: skewY(-5deg) scaleX(0.94);
+  }
+  65% {
+    transform: skewY(4deg) scaleX(1.03);
+  }
+}
+@keyframes raise {
+  from {
+    height: 6px;
+    opacity: 0.4;
   }
 }
 
