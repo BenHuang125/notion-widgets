@@ -38,6 +38,10 @@ await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
+// Errors inside the drawing loop are caught and logged, so watch the console too (blocked fonts aside).
+page.on('console', (m) => {
+  if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text());
+});
 
 await page.goto(url);
 await page.waitForTimeout(1500);
@@ -56,8 +60,30 @@ check(
   colours.join(' / '),
 );
 
-const lines = await page.evaluate(() => [qTop.scrollWidth <= qTop.parentElement.clientWidth + 1, qBot.scrollWidth <= qBot.parentElement.clientWidth + 1]);
-check('each quote line fits on one line', lines[0] && lines[1], JSON.stringify(lines));
+// Every quote must fit inside its half (padding excluded), at the normal size and in a short embed.
+async function fits(p) {
+  return p.evaluate(() => {
+    const bad = [];
+    for (let i = 0; i < QUOTES.length; i++) {
+      setQuote(i);
+      const pr = panel.getBoundingClientRect();
+      for (const el of [qTop, qBot]) {
+        const r = el.getBoundingClientRect();
+        if (el.scrollWidth > el.parentElement.clientWidth - 68 + 1 || r.bottom > pr.bottom + 0.5 || r.top < pr.top - 0.5)
+          bad.push(`${i}:${el.id}`);
+      }
+    }
+    return bad;
+  });
+}
+check('every quote fits inside the frame (1200×240)', (await fits(page)).length === 0, JSON.stringify(await fits(page)));
+const short = await ctx.newPage();
+await short.setViewportSize({ width: 1200, height: 150 });
+await short.goto(url);
+await short.waitForTimeout(400);
+const shortBad = await fits(short);
+check('every quote fits in a short embed (1200×150)', shortBad.length === 0, JSON.stringify(shortBad));
+await short.close();
 
 const drawn = await page.evaluate(() => {
   const c = document.getElementById('world');
@@ -116,10 +142,19 @@ await paused.addInitScript(() => {
   window.requestAnimationFrame = () => 0;
 });
 await paused.goto(url);
-const t0 = await paused.evaluate(() => S.t);
+const frame = () => paused.evaluate(() => document.getElementById('world').toDataURL());
+const f0 = await frame();
 await paused.waitForTimeout(1200);
-const t1 = await paused.evaluate(() => S.t);
-check('keeps moving when the browser pauses animation frames', t1 - t0 > 0.5, `${t0} -> ${t1}`);
+const f1 = await frame();
+check('keeps drawing when the browser pauses animation frames', f0 !== f1, 'canvas did not change');
+
+// A broken save must not freeze its mood.
+await page.evaluate(() => localStorage.setItem('frame-spirit.v1', JSON.stringify({ v: 'x', anger: 9, lastSeen: Date.now() + 1e9 })));
+await page.reload();
+await page.waitForTimeout(300);
+const sane = await page.evaluate(() => [S.v, S.anger]);
+check('ignores a broken or future-dated save', Number.isFinite(sane[0]) && sane[1] >= 0 && sane[1] <= 1, JSON.stringify(sane));
+check('no errors during the run', errors.length === 0, errors.join(' | '));
 
 await browser.close();
 server.close();

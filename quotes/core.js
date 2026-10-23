@@ -28,7 +28,7 @@ var clock={speed:1,simBase:Date.now(),realBase:Date.now(),
   now:function(){return this.simBase+(Date.now()-this.realBase)*this.speed},
   setSpeed:function(s){this.simBase=this.now();this.realBase=Date.now();this.speed=s},
   jump:function(t){this.simBase=t;this.realBase=Date.now()}};
-function hourOf(t){return (((t/HOUR)+8)%24+24)%24}
+function hourOf(t){var d=new Date(t);return d.getHours()+d.getMinutes()/60} // 看的人所在地的時間
 function darkness(t){var h=hourOf(t);
   if(h>=19.5||h<5) return 1; if(h>=17.5) return (h-17.5)/2; if(h<6.5) return 1-(h-5)/1.5; return 0}
 function isNight(t){var h=hourOf(t);return h>=22.5||h<6}
@@ -74,8 +74,12 @@ function spanify(el,text){el.textContent='';
     var wd=document.createElement('span');wd.style.whiteSpace='nowrap';
     for(var i=0;i<word.length;i++){var s=document.createElement('span');s.className='ch';s.textContent=word[i];wd.appendChild(s)}
     el.appendChild(wd)})}
-function fitLine(el,max,width){var s=max;el.style.fontSize=s+'px';while(s>8&&el.scrollWidth>width){s-=.25;el.style.fontSize=s+'px'}}
-function fitQuote(){if(!G.iw)return;fitLine(qTop,21,G.iw-68);fitLine(qBot,14.5,G.iw-68)}
+function fitLine(el,max,width,min){var s=max;el.style.fontSize=s+'px';while(s>min&&el.scrollWidth>width){s-=.25;el.style.fontSize=s+'px'}return el.scrollWidth<=width}
+// 每行先縮字到放得下；下半行太小（<10px）還放不下時改成最多兩行
+function fitQuote(){if(!G.iw)return;var w=G.iw-68,th=G.ih*.54,bh=G.ih-th-1;
+  fitLine(qTop,Math.max(9,Math.min(21,(th-8)/1.3)),w,9);
+  qBot.classList.remove('wrap');var bmax=Math.max(8,Math.min(14.5,(bh-11)/1.4));
+  if(!fitLine(qBot,bmax,w,Math.min(10,bmax))){qBot.classList.add('wrap');fitLine(qBot,Math.max(8,Math.min(bmax,(bh-11)/2.8)),1e9,8)}}
 function setQuote(i){qi=i;displaced=[];spanify(qTop,QUOTES[i].h);spanify(qBot,QUOTES[i].b);fitQuote()}
 function nextQuote(){qTop.classList.add('fade');qBot.classList.add('fade');
   setTimeout(function(){setQuote((qi+1)%QUOTES.length);qTop.classList.remove('fade');qBot.classList.remove('fade');
@@ -92,7 +96,9 @@ var C={iv:'#F6F0E4',ivS:'#D8C9B2',ivD:'#B49F84',ivH:'#FFFDF8',eye:'#3A2A20',
   water:'#8BA6AB',waterD:'#6C8990',soil:'#7C5C43',flowers:[['#7A3036','#F2E8D6','#C9973F'],['#55617A','#F2E8D6','#B5647A'],['#C9973F','#7A3036','#F2E8D6']]};
 
 /* ───────── 精靈的狀態 ───────── */
-var saved=store.get()||{},nowReal=Date.now(),awayH=saved.lastSeen?(nowReal-saved.lastSeen)/HOUR:0;
+var saved=store.get()||{},nowReal=Date.now(),awayH=Math.max(0,(+saved.lastSeen>0?(nowReal-saved.lastSeen)/HOUR:0)||0);
+function num(v,a,b,d){v=+v;return isFinite(v)?clamp(v,a,b):d} // 存檔壞掉或被改過也不會卡住
+saved={v:num(saved.v,-1,1,null),anger:num(saved.anger,0,1,0),pebbles:Math.round(num(saved.pebbles,0,7,0)),pets:Math.round(num(saved.pets,0,1e6,0)),lastSeen:saved.lastSeen};
 var S={mode:'top',u:0,face:1,act:null,actKey:null,phase:'go',path:[],actT:0,actDur:0,anim:'idle',t:0,
   tween:null,hidden:false,react:null,bubble:null,blink:2,proud:0,
   v:(saved.v==null?.2:.15+(saved.v-.15)*Math.exp(-awayH/6)),anger:(saved.anger||0)*Math.exp(-awayH),

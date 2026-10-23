@@ -156,8 +156,10 @@ function draw(){var t=clock.now(),w=worldAt(t);
   drawSky(t);
   var age1=(w.done.tree1?w.age.tree1:0),g1=w.done.tree1?Math.min(1,.45+age1/96*.55):prog(w,'tree1')*.45;
   var age2=(w.done.tree2?w.age.tree2:0),g2=w.done.tree2?Math.min(1,.45+age2/96*.55):prog(w,'tree2')*.45;
+  // 嵌入框比較矮時，畫框上的東西整體壓低，不會被切掉
+  var k=Math.min(1,SKY/76);ctx.save();if(k<1){ctx.translate(0,G.fy);ctx.scale(1,k);ctx.translate(0,-G.fy)}
   drawTree(X(SLOT.tree1),g1,.45);drawTree(X(SLOT.tree2),g2*.85,.25);
-  drawHouse(w,t);drawGarden(w);drawPond(w);drawProps(w,t);
+  drawHouse(w,t);drawGarden(w);drawPond(w);drawProps(w,t);ctx.restore();
   drawFrame();
   var p=curScr();
   if(!S.hidden){ctx.globalAlpha=S.tween&&S.tween.to.door?.55:1;drawSpirit(p.x,p.y,p.s,S.anim);ctx.globalAlpha=1}
@@ -167,7 +169,7 @@ function draw(){var t=clock.now(),w=worldAt(t);
 /* ───────── 迴圈（Notion 內嵌會暫停 requestAnimationFrame，所以另外用計時器補） ───────── */
 var last=performance.now();
 function tick(){var now=performance.now(),dt=(now-last)/1000;if(dt<.012)return;last=now;if(document.hidden)return;dt=Math.min(dt,.1);
-  try{update(dt);draw()}catch(e){console.error(e)}}
+  try{update(dt);draw()}catch(e){console.error(e);var er=document.getElementById('err');if(er&&er.hidden){er.hidden=false;er.textContent='畫面出錯：'+(e&&e.message||e)}}}
 function raf(){tick();requestAnimationFrame(raf)}
 requestAnimationFrame(raf);setInterval(function(){if(performance.now()-last>90)tick()},50);
 document.addEventListener('visibilitychange',function(){last=performance.now();if(document.hidden)save()});
