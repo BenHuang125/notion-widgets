@@ -367,7 +367,7 @@ button {
 .axis {
   --line-y: 30px;
   position: relative;
-  height: 96px;
+  height: 94px;
 }
 .axis-now-band {
   position: absolute;
@@ -517,7 +517,7 @@ button {
 
 /* Flags: planted in the line at the goal's date; the cloth waves. Pale until reached. */
 .flag-mark {
-  --pole: calc(54px + var(--level) * 24px);
+  /* --pole is set per flag by the layout (core/marks.ts), clear of cakes and other labels. */
   position: absolute;
   bottom: calc(var(--line-y) - 1px);
   width: 28px;
@@ -573,6 +573,19 @@ button {
 .flag-text b {
   color: var(--ink);
   font-size: var(--fs-s);
+}
+/* Label on the left when the right side is taken: cloth mirrored, text right-aligned. */
+.flag-mark.is-left .flag-cloth {
+  left: auto;
+  right: 26px;
+  transform-origin: 100% 50%;
+  scale: -1 1;
+}
+.flag-mark.is-left .flag-text {
+  left: auto;
+  right: 58px;
+  align-items: flex-end;
+  text-align: right;
 }
 .flag-mark.is-reached .flag-text span {
   color: var(--done);
