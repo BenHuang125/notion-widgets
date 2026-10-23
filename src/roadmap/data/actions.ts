@@ -18,7 +18,6 @@ export interface SegmentDraft {
   readonly name: string;
   readonly start: string;
   readonly end: string;
-  readonly color: PaletteKey;
 }
 
 /**
@@ -35,8 +34,8 @@ export interface Actions {
   setDone(card: Card, doneOn: IsoDate | null): void;
   deleteCard(card: Card): void;
   /** Returns the new track's id right away, so a time range can go in it in the same step. */
-  addTrack(name: string): string;
-  renameTrack(track: Track, name: string): void;
+  addTrack(name: string, color: PaletteKey): string;
+  editTrack(track: Track, name: string, color: PaletteKey): void;
   deleteTrack(track: Track): void;
   addSegment(draft: SegmentDraft): void;
   editSegment(segment: Segment, draft: SegmentDraft): void;
@@ -86,12 +85,13 @@ export function makeActions(
         putCard({ ...card, state: doneOn === null ? { kind: 'open' } : { kind: 'done', doneOn } }),
       ),
     deleteCard: (card) => bg(store.remove('cards', card.id)),
-    addTrack: (name) => {
+    addTrack: (name, color) => {
       const id = newId();
-      bg(store.put('tracks', id, trackRow({ id, name })));
+      bg(store.put('tracks', id, trackRow({ id, name, color })));
       return id;
     },
-    renameTrack: (track, name) => bg(store.put('tracks', track.id, trackRow({ ...track, name }))),
+    editTrack: (track, name, color) =>
+      bg(store.put('tracks', track.id, trackRow({ ...track, name, color }))),
     deleteTrack: (track) => {
       const ranges = plan()
         .segments.filter((x) => x.trackId === track.id)

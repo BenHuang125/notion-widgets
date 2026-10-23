@@ -75,8 +75,21 @@ export const parseCard = (id: string, row: Row): Parsed<Card> =>
     };
   });
 
-export const parseTrack = (id: string, row: Row): Parsed<Track> =>
-  guard(() => ({ id, name: text(row, 'name', MAX_TITLE) }));
+/** Reads a color if the row has a valid one (older rows have none). */
+export function optionalColor(row: Row): PaletteKey | null {
+  return GOAL_PALETTE.find((k) => k === row.color) ?? null;
+}
+
+/**
+ * A track saved before tracks had colors has none: it gets `fallback` (worked out from its
+ * time ranges' old colors), so Ben's existing tracks keep the look they had.
+ */
+export const parseTrack = (id: string, row: Row, fallback: PaletteKey): Parsed<Track> =>
+  guard(() => ({
+    id,
+    name: text(row, 'name', MAX_TITLE),
+    color: optionalColor(row) ?? fallback,
+  }));
 
 export const parseSegment = (id: string, row: Row): Parsed<Segment> =>
   guard(() => {
@@ -89,7 +102,6 @@ export const parseSegment = (id: string, row: Row): Parsed<Segment> =>
       name: text(row, 'name', MAX_TITLE),
       start,
       end,
-      color: color(row, 'color'),
     };
   });
 
@@ -113,12 +125,11 @@ export const cardRow = (c: Card): Row => ({
   doneOn: c.state.kind === 'done' ? c.state.doneOn : null,
   rank: c.rank,
 });
-export const trackRow = (t: Track): Row => ({ name: t.name });
+export const trackRow = (t: Track): Row => ({ name: t.name, color: t.color });
 export const segmentRow = (s: Segment): Row => ({
   trackId: s.trackId,
   name: s.name,
   start: s.start,
   end: s.end,
-  color: s.color,
 });
 export const layoutRow = (l: Layout): Row => ({ above: [...l.above], below: [...l.below] });

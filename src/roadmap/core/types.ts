@@ -48,6 +48,8 @@ export interface Card {
 export interface Track {
   readonly id: string;
   readonly name: string;
+  /** Every time range in the track takes this color, so a track reads as one line. */
+  readonly color: PaletteKey;
 }
 
 export interface Segment {
@@ -57,7 +59,6 @@ export interface Segment {
   readonly start: YearMonth;
   /** Inclusive last month. */
   readonly end: YearMonth;
-  readonly color: PaletteKey;
 }
 
 /** The rows around the axis. Built-in layers plus one per track. */
