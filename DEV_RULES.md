@@ -20,3 +20,6 @@
     嵌入網址照 Notion「專案 Projects」資料庫（collection://004c5855-6db5-48a0-923c-dc988e3aefc6）更新：「個人」固定在最前、沒有 id；已有的 id 保留順序與舊名，新的接在最後；網址前段加 `?v=` 讓瀏覽器拿新版程式；
     代辦和日曆完全分開；週回顧 Week 1 = 2026-09-04（週五起算）；字體與顏色沿用路線圖（`--serif` 數字、`--sans` 文字），只有淺色；
     改這裡跑 `node tests/e2e/working.mjs`（沙盒下載不到瀏覽器時加 `PW_CHROMIUM=<已安裝的 chromium 路徑>`）；改程式要把各檔 import 與 `working.html` 的 `?v=` 一起加 1。
+15. 首頁四宮格照片牆（`photos.html`，單一檔案）：照片只存在瀏覽器 IndexedDB `photo-wall.v2`（store `photos`，每筆 id、blob、added；不准改名），最多 20 張，存之前縮到長邊 1600px；每 30 秒隨機挑 4 張（先挑畫面上沒有的），四格依序換（從下往上掀開＋慢慢收回放大）；只有 4 張以下時改成換位置；
+    顏色只用 Ben 指定的四色（#6B5A4D、#D1C0A7、#F9EED8、#AFA391）；沒照片時顯示用這四色畫的範例（不存）；滑過右下角「照片」打開照片庫上傳／刪除（選檔、Ctrl+V、拖進來）；
+    計時用 setInterval 和 CSS 轉場，不用 requestAnimationFrame（Notion 內嵌會暫停它）；改這裡跑 `node tests/e2e/photos.mjs`；改程式要把 Notion 嵌入網址的 `?v=` 加 1。

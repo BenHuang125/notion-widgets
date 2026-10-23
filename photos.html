@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四宮格照片牆</title>
+<style>
+/* Layout: one cream plate holding a 2×2 grid of 3:2 photos with 4px seams.
+   A pool of up to 20 photos; every 30 s four are drawn at random and each tile changes in turn
+   (wipe-up reveal + slow settle). A small taupe button, shown on hover, opens the photo pool. */
+:root{
+  --taupe:#6B5A4D;    /* text, buttons */
+  --sand:#D1C0A7;     /* empty tile, add button */
+  --cream:#F9EED8;    /* plate, panel */
+  --stone:#AFA391;    /* empty tile, secondary text */
+  --paper:#FFFFFF;
+  --seam:4px;
+  --ease-expo:cubic-bezier(.16,1,.3,1);
+  --ui:"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{background:var(--paper);color:var(--taupe);margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{font-family:var(--ui);padding:4px 2px}
+
+.wall{position:relative;max-width:960px;margin:0 auto}
+.plate{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--seam);padding:var(--seam);background:var(--cream);border-radius:8px}
+.tile{position:relative;aspect-ratio:3/2;max-width:100%;overflow:hidden;border-radius:4px;cursor:zoom-in}
+.tile:nth-child(1),.tile:nth-child(4){background:var(--sand)}
+.tile:nth-child(2),.tile:nth-child(3){background:var(--stone)}
+.tile.blank{cursor:default}
+.layer{position:absolute;inset:0;clip-path:inset(0)}
+.layer img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none}
+/* incoming photo: wipes up from the bottom while it settles from a slight zoom */
+.layer.in{clip-path:inset(100% 0 0 0)}
+.layer.in img{transform:scale(1.14)}
+.layer.go{clip-path:inset(0);transition:clip-path 1.25s var(--ease-expo)}
+.layer.go img{transform:scale(1);transition:transform 2.6s var(--ease-expo)}
+/* outgoing photo drifts up a little and darkens underneath */
+.layer.out img{transform:translateY(-6%) scale(1.04);filter:brightness(.7);transition:transform 1.25s var(--ease-expo),filter 1.25s var(--ease-expo)}
+
+.open{position:absolute;right:calc(var(--seam) + 10px);bottom:calc(var(--seam) + 10px);height:30px;padding:0 12px;border:0;border-radius:999px;
+  background:var(--taupe);color:var(--cream);font:500 12px var(--ui);display:flex;gap:6px;align-items:center;cursor:pointer;opacity:0;transition:opacity .18s;z-index:2}
+.wall:hover .open,.open:focus-visible{opacity:1}
+.open svg{width:14px;height:14px}
+.open .n{font-variant-numeric:tabular-nums;opacity:.75}
+
+/* photo pool panel */
+.panel{position:fixed;inset:0;background:rgba(107,90,77,.45);display:grid;place-items:center;z-index:10;padding:16px}
+.sheet{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--cream);border-radius:10px;padding:18px;display:grid;gap:14px;box-shadow:0 12px 40px rgba(60,45,35,.25)}
+.sheet header{display:flex;align-items:baseline;gap:10px}
+.sheet h2{margin:0;font-size:16px;font-weight:600;color:var(--taupe)}
+.sheet .count{font-size:13px;color:var(--stone);font-variant-numeric:tabular-nums}
+.sheet .x{margin-left:auto;border:0;background:none;color:var(--taupe);font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:4px}
+.sheet .x:hover{background:var(--sand)}
+.thumbs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+@media (max-width:420px){.thumbs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.thumb{position:relative;aspect-ratio:1;border-radius:4px;overflow:hidden;background:#EFE2CA}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .del{position:absolute;right:4px;top:4px;width:22px;height:22px;border:0;border-radius:50%;background:rgba(249,238,216,.95);color:var(--taupe);cursor:pointer;display:grid;place-items:center;opacity:0;transition:opacity .15s}
+.thumb:hover .del,.del:focus-visible{opacity:1}
+.del svg{width:12px;height:12px}
+.add{aspect-ratio:1;border:0;border-radius:4px;background:var(--sand);color:var(--taupe);font:13px var(--ui);cursor:pointer;display:grid;place-content:center;gap:2px}
+.add:hover{background:#C6B396}
+.add b{font-size:22px;font-weight:300;line-height:1}
+.drop{border-radius:6px;background:#F2E5CB;color:var(--taupe);font-size:13px;padding:12px;text-align:center;line-height:1.6}
+.drop.on{background:var(--sand)}
+.drop span{color:#8C7E6C}
+:focus-visible{outline:2px solid var(--taupe);outline-offset:2px}
+
+.demo{position:absolute;left:calc(var(--seam) + 10px);bottom:calc(var(--seam) + 10px);border:0;background:rgba(249,238,216,.92);color:var(--taupe);font:12px var(--ui);padding:6px 12px;border-radius:999px;cursor:pointer;z-index:2}
+.demo:hover{background:var(--cream)}
+.lb{position:fixed;inset:0;background:rgba(40,33,28,.92);display:grid;place-items:center;z-index:20;padding:24px;cursor:zoom-out}
+.lb img{max-height:88vh;max-width:min(92vw,1200px);border-radius:4px}
+.toast{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--taupe);color:var(--cream);font-size:12px;padding:6px 12px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){
+  .layer.in{clip-path:inset(0);opacity:0}.layer.in img{transform:none}
+  .layer.go{opacity:1;transition:opacity .5s}.layer.go img{transition:none}
+  .layer.out img{transform:none;filter:none;transition:none}}
+</style>
+</head>
+<body>
+<div class="wall" id="wall">
+  <div class="plate" id="plate">
+    <div class="tile blank"></div><div class="tile blank"></div><div class="tile blank"></div><div class="tile blank"></div>
+  </div>
+  <button class="demo" id="demo" hidden>目前是範例照片，點這裡清空</button>
+  <button class="open" id="open" aria-label="管理照片"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 11l3.5-3.5 3 3 2-2L14 12"/></svg>照片 <span class="n" id="n">0 / 20</span></button>
+</div>
+
+<div class="panel" id="panel" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ptitle">
+    <header><h2 id="ptitle">我的照片</h2><span class="count" id="count">0 / 20</span><button class="x" id="close" aria-label="關閉">×</button></header>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="drop" id="drop">可以直接按 Ctrl+V 貼上，或把照片拖進這裡<br><span>一次可以選好幾張，最多 20 張</span></div>
+  </div>
+</div>
+<input type="file" id="file" accept="image/*" multiple hidden>
+<div class="lb" id="lb" hidden><img id="lbImg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(()=>{
+const MAX=20, EVERY=30000, STAGGER=260;
+const $=id=>document.getElementById(id), plate=$("plate"), tiles=[...plate.children];
+let pool=[], demo=false, shown=[], timer=0;
+
+/* ---------- storage: IndexedDB (photos are too big for localStorage) ---------- */
+let db=null;
+function openDB(){return new Promise(res=>{try{const r=indexedDB.open("photo-wall.v2",1);
+  r.onupgradeneeded=()=>r.result.createObjectStore("photos",{keyPath:"id"});
+  r.onsuccess=()=>{db=r.result;res()};r.onerror=()=>res()}catch(e){res()}})}
+function loadAll(){return new Promise(res=>{if(!db)return res([]);try{const q=db.transaction("photos").objectStore("photos").getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])}catch(e){res([])}})}
+function save(rec){return new Promise(res=>{if(!db)return res();try{const t=db.transaction("photos","readwrite");t.objectStore("photos").put(rec);t.oncomplete=res;t.onerror=res}catch(e){res()}})}
+function remove(id){return new Promise(res=>{if(!db)return res();try{const t=db.transaction("photos","readwrite");t.objectStore("photos").delete(id);t.oncomplete=res;t.onerror=res}catch(e){res()}})}
+try{indexedDB.deleteDatabase("photo-wall.v1")}catch(e){}  /* earlier month-grid version, no longer used */
+
+/* shrink to 1600px long side before saving */
+function shrink(blob){return new Promise((res,rej)=>{const u=URL.createObjectURL(blob),im=new Image();
+  im.onload=()=>{const s=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement("canvas");
+    c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(),"image/jpeg",.88)};
+  im.onerror=()=>{URL.revokeObjectURL(u);rej()};im.src=u})}
+
+/* ---------- example photos, painted in the four palette colours (preview only, never saved) ---------- */
+const SCENES=[["#D1C0A7","#F9EED8","#6B5A4D"],["#AFA391","#F9EED8","#6B5A4D"],["#F9EED8","#D1C0A7","#AFA391"],["#6B5A4D","#AFA391","#F9EED8"],
+  ["#D1C0A7","#AFA391","#6B5A4D"],["#AFA391","#D1C0A7","#F9EED8"],["#F9EED8","#AFA391","#6B5A4D"],["#8C7A6A","#D1C0A7","#F9EED8"]];
+function painted(i){const c=document.createElement("canvas");c.width=900;c.height=600;const x=c.getContext("2d"),[sky,mid,land]=SCENES[i];
+  x.fillStyle=sky;x.fillRect(0,0,900,600);
+  x.fillStyle=mid;x.globalAlpha=.9;x.beginPath();x.arc(220+i*70,170+(i%3)*30,58,0,7);x.fill();x.globalAlpha=1;
+  let s=i*131+7;const r=()=>(s=(s*9301+49297)%233280)/233280;
+  for(let k=0;k<3;k++){x.fillStyle=k===2?land:mid;x.globalAlpha=.45+k*.27;x.beginPath();x.moveTo(0,600);let y=360+k*70;
+    for(let px=0;px<=900;px+=50){y+=(r()-.5)*60;x.lineTo(px,Math.min(590,Math.max(260,y)))}x.lineTo(900,600);x.fill()}
+  x.globalAlpha=1;return new Promise(res=>c.toBlob(b=>res(b),"image/jpeg",.85))}
+
+/* ---------- pick four at random, preferring photos not on screen now ---------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function pickFour(){
+  const ids=pool.map(p=>p.id),fresh=shuffle(ids.filter(id=>!shown.includes(id))),old=shuffle(ids.filter(id=>shown.includes(id)));
+  const out=[...fresh,...old].slice(0,4);
+  if(ids.length<=4)shuffle(out);   /* 4 or fewer photos: just move them around */
+  return out;
+}
+
+/* ---------- transition: each tile in turn, new photo wipes up and settles ---------- */
+const urlOf=new Map();
+function url(rec){if(!urlOf.has(rec.id))urlOf.set(rec.id,URL.createObjectURL(rec.blob));return urlOf.get(rec.id)}
+function setTile(t,rec,delay){
+  setTimeout(()=>{
+    const old=t.querySelector(".layer:not(.leaving)");
+    if(!rec){t.querySelectorAll(".layer").forEach(l=>l.remove());t.classList.add("blank");t.dataset.id="";return}
+    if(t.dataset.id===String(rec.id))return;
+    const L=document.createElement("div");L.className="layer in";
+    const img=new Image();img.alt="";img.src=url(rec);L.appendChild(img);
+    const run=()=>{t.appendChild(L);t.classList.remove("blank");t.dataset.id=rec.id;
+      void L.offsetWidth;L.classList.add("go");L.classList.remove("in");
+      if(old)old.classList.add("leaving","out");
+      setTimeout(()=>{if(old)old.remove()},2700)};
+    img.decode?img.decode().then(run,run):run();
+  },delay);
+}
+function showNext(){
+  const ids=pickFour();shown=ids;
+  tiles.forEach((t,i)=>setTile(t,pool.find(p=>p.id===ids[i]),i*STAGGER));
+}
+function restart(){clearInterval(timer);showNext();if(pool.length>1)timer=setInterval(showNext,EVERY)}
+document.addEventListener("visibilitychange",()=>{clearInterval(timer);if(!document.hidden&&pool.length>1)timer=setInterval(showNext,EVERY)});
+
+/* ---------- photo pool panel ---------- */
+function counts(){const t=`${demo?0:pool.length} / ${MAX}`;$("n").textContent=t;$("count").textContent=t;$("demo").hidden=!demo}
+function renderThumbs(){
+  const box=$("thumbs");box.innerHTML="";
+  if(!demo)pool.forEach(p=>{const d=document.createElement("div");d.className="thumb";
+    d.innerHTML=`<img alt="" src="${url(p)}"><button class="del" data-id="${p.id}" aria-label="刪除這張"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>`;box.appendChild(d)});
+  if(demo||pool.length<MAX){const a=document.createElement("button");a.className="add";a.id="addBtn";a.innerHTML="<b>+</b>上傳";box.appendChild(a)}
+  counts();
+}
+function clearDemo(){if(!demo)return;demo=false;pool.forEach(p=>{URL.revokeObjectURL(urlOf.get(p.id));urlOf.delete(p.id)});pool=[];shown=[]}
+async function addFiles(files){
+  const imgs=[...files].filter(f=>f&&f.type.startsWith("image/"));if(!imgs.length)return;
+  clearDemo();
+  const room=MAX-pool.length;if(room<=0){toast("已經 20 張了，先刪掉幾張");return}
+  let ok=0;
+  for(const f of imgs.slice(0,room)){try{const b=await shrink(f);const rec={id:Date.now()+Math.random(),blob:b,added:Date.now()};await save(rec);pool.push(rec);ok++}catch(e){}}
+  renderThumbs();restart();
+  toast(imgs.length>room?`放進 ${ok} 張，最多只能 20 張`:`放進 ${ok} 張`);
+}
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),1700)}
+
+$("open").onclick=()=>{renderThumbs();$("panel").hidden=false;$("close").focus()};
+$("close").onclick=()=>$("panel").hidden=true;
+$("panel").addEventListener("click",e=>{if(e.target===$("panel"))$("panel").hidden=true});
+$("thumbs").addEventListener("click",async e=>{
+  if(e.target.closest("#addBtn")){$("file").click();return}
+  const b=e.target.closest(".del");if(!b)return;const id=+b.dataset.id;
+  await remove(id);pool=pool.filter(p=>p.id!==id);URL.revokeObjectURL(urlOf.get(id));urlOf.delete(id);
+  renderThumbs();if(shown.includes(id))restart();
+});
+$("file").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
+document.addEventListener("paste",e=>{const fs=[...(e.clipboardData?.items||[])].filter(i=>i.type.startsWith("image/")).map(i=>i.getAsFile());if(fs.length){e.preventDefault();addFiles(fs)}});
+["dragenter","dragover"].forEach(ev=>document.addEventListener(ev,e=>{if([...(e.dataTransfer?.types||[])].includes("Files")){e.preventDefault();$("drop").classList.add("on")}}));
+document.addEventListener("dragleave",e=>{if(!e.relatedTarget)$("drop").classList.remove("on")});
+document.addEventListener("drop",e=>{e.preventDefault();$("drop").classList.remove("on");addFiles(e.dataTransfer.files)});
+$("demo").onclick=()=>{clearDemo();clearInterval(timer);tiles.forEach(t=>setTile(t,null,0));counts();if(!$("panel").hidden)renderThumbs();toast("範例已清空，點右下角「照片」上傳")};
+
+plate.addEventListener("click",e=>{const t=e.target.closest(".tile"),img=t&&t.querySelector(".layer:not(.leaving) img");if(img){$("lbImg").src=img.src;$("lb").hidden=false}});
+$("lb").addEventListener("click",()=>$("lb").hidden=true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("lb").hidden=true;$("panel").hidden=true}});
+
+openDB().then(async()=>{
+  pool=(await loadAll()).sort((a,b)=>a.added-b.added);
+  if(!pool.length){demo=true;pool=await Promise.all(SCENES.map(async(_,i)=>({id:-1-i,blob:await painted(i)})))}
+  counts();restart();
+});
+})();
+</script>
+</body>
+</html>
