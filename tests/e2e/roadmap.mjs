@@ -115,7 +115,7 @@ try {
   await page.click('.dlg .btn-primary');
   await page.waitForSelector('.flag-mark');
   check(
-    (await page.textContent('.flag-text')).includes('2026/10/20'),
+    (await page.textContent('.flag-text')).includes('20 Oct 2026'),
     'flag shows the last tick date',
   );
   check((await page.locator('.card.is-done').count()) === 2, 'card shows as done');

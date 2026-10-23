@@ -1,6 +1,13 @@
 // The forms Ben fills in: goal, card, time range, track, and "when did you finish this?".
 
-import { FIRST_YEAR, LAST_YEAR, MONTHS_PER_YEAR, parseYearMonth, toYearMonth } from '../core/dates';
+import {
+  FIRST_YEAR,
+  LAST_YEAR,
+  MONTH_NAMES,
+  MONTHS_PER_YEAR,
+  parseYearMonth,
+  toYearMonth,
+} from '../core/dates';
 import { GOAL_PALETTE } from '../core/goals';
 import type { Card, Goal, PaletteKey, Segment, Track } from '../core/types';
 import type { Actions, CardDraft, SegmentDraft } from '../data/actions';
@@ -32,11 +39,11 @@ function monthPicker(value: string): { el: HTMLElement; read: () => string } {
   const { year, month } = parseYearMonth(value);
   const years = h('select', { 'aria-label': '年', id: fid('y') });
   for (let y = FIRST_YEAR; y <= LAST_YEAR; y += 1) {
-    years.append(h('option', { value: y, selected: y === year }, `${y} 年`));
+    years.append(h('option', { value: y, selected: y === year }, String(y)));
   }
   const months = h('select', { 'aria-label': '月', id: fid('m') });
   for (let m = 1; m <= MONTHS_PER_YEAR; m += 1) {
-    months.append(h('option', { value: m, selected: m === month }, `${m} 月`));
+    months.append(h('option', { value: m, selected: m === month }, MONTH_NAMES[m - 1] ?? ''));
   }
   return {
     el: h('div', { class: 'pair' }, years, months),

@@ -1,6 +1,6 @@
 // The goal rings at the top: soonest target on the left, four in view, the rest by sliding.
 
-import { slashDate as slash } from '../core/dates';
+import { dayLabel as slash } from '../core/dates';
 import { type GoalStatus, goalStatus, sortGoals } from '../core/goals';
 import type { Card, Goal } from '../core/types';
 import { h, icon, paletteColor, s } from './dom';

@@ -382,9 +382,23 @@ button {
   text-align: left;
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
   cursor: pointer;
   box-shadow: inset 3px 0 0 var(--c);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* The name gives way first; the dates stay whole at the right end while they fit. */
+.segment-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.segment-range {
+  flex: 0 0 auto;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
 }
 .segment:hover {
   background: color-mix(in srgb, var(--c) 42%, var(--card));
@@ -852,7 +866,7 @@ button {
 </head>
 <body>
 <main id="roadmap"><p class="loading">正在讀取你的路線圖…</p></main>
-<script type="module" src="js/roadmap.PPIZ6CYW.js"></script>
+<script type="module" src="js/roadmap.5BMYZNV3.js"></script>
 <script>
 // If the program file never arrives (network, an old cached page), say so instead of waiting.
 setTimeout(function () {

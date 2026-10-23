@@ -1,7 +1,7 @@
 // One card on the board: tick box top-left, title, note, month; completed cards fade and show
 // the day they were finished at the bottom right.
 
-import { parseYearMonth, slashDate } from '../core/dates';
+import { dayLabel, monthLabel } from '../core/dates';
 import type { Card, Goal } from '../core/types';
 import { h, icon, paletteColor } from './dom';
 
@@ -14,7 +14,6 @@ const NEUTRAL = 'var(--line-strong)';
 
 export function cardView(card: Card, goal: Goal | undefined, events: CardEvents): HTMLElement {
   const done = card.state.kind === 'done';
-  const { month } = parseYearMonth(card.month);
   const tick = h(
     'button',
     {
@@ -36,9 +35,13 @@ export function cardView(card: Card, goal: Goal | undefined, events: CardEvents)
     h(
       'span',
       { class: 'card-foot' },
-      h('span', { class: 'card-month' }, `${month} 月${goal ? ` · ${goal.title}` : ''}`),
+      h(
+        'span',
+        { class: 'card-month' },
+        `${monthLabel(card.month)}${goal ? ` · ${goal.title}` : ''}`,
+      ),
       card.state.kind === 'done'
-        ? h('span', { class: 'card-done' }, `完成 ${slashDate(card.state.doneOn)}`)
+        ? h('span', { class: 'card-done' }, `完成 ${dayLabel(card.state.doneOn)}`)
         : null,
     ),
   );
