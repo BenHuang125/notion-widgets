@@ -1,7 +1,7 @@
 # notion-widgets
 Small widgets embedded in Ben's Notion homepage, plus his standalone life roadmap.
 
-- `quotes.html` — rotating quotes (30s)
+- `quotes.html` + `quotes/` — rotating quotes (30s) in a wooden frame with a chameleon that lives on it (mood colours, builds over real days)
 - `calendar.html` — mini calendar
 - `src/roadmap/` → `dist/index.html` — 人生路線圖, embedded in the Notion Homepage:
   goal rings, a timeline from 2017 to age 50 with birthdays, goal flags and time-range tracks,

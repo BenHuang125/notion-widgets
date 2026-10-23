@@ -4,67 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quotes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,600;1,6..72,400&display=swap">
 <style>
-  :root{--bg:#F7F4EE;--head:#2B2B2B;--sub:#8A8276}
-  @media (prefers-color-scheme: dark){:root{--bg:#252320;--head:#EDE7DC;--sub:#A69E92}}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;overflow:hidden;background:var(--bg);font-family:Georgia,"Times New Roman",serif}
-  #stage{position:relative;height:100%;width:100%}
-  .q{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;
-     text-align:center;padding:10px 40px;opacity:0;transition:opacity 1.2s ease}
-  .q.on{opacity:1}
-  .head,.body{white-space:nowrap;max-width:100%}
-  .head{color:var(--head);font-weight:600;line-height:1.35}
-  .body{color:var(--sub);font-style:italic;line-height:1.5;margin-top:.5em}
-  @media (max-width:500px){.q{padding:8px 16px}}
+/* Notion 首頁語錄框：木畫框＋會自己生活的變色龍（Ben 2026-10-23 定案） */
+:root{
+  --page:#FFFFFF;          /* Notion 頁面白 */
+  --ink:#2B2622;           /* 一般文字 */
+  --muted:#7D7368;         /* 說明文字 */
+  --topBg:#4A3426;         /* 上半部 深咖啡 */
+  --topText:#FBF6EC;       /* 上半部 象牙白字 */
+  --lowBg:#EADFCF;         /* 下半部 淺咖啡 */
+  --lowText:#6A4A34;       /* 下半部字色（可切換） */
+  --rule:rgba(201,163,106,.55); /* 中間細分隔 */
+  --accent:#6E2A30;        /* 酒紅點綴 */
+  --line:#E7E1D8;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --ui:"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--ui);margin:0}
+html,body{height:100%;overflow:hidden}
+/* ── 嵌入框本體 ── */
+#widget{position:relative;width:100%;height:100%;user-select:none;-webkit-user-select:none}
+#panel{position:absolute;display:flex;flex-direction:column;overflow:hidden}
+#top{flex:0 0 54%;background:var(--topBg);display:flex;align-items:center;justify-content:center;padding:0 34px}
+#rule{flex:0 0 1px;background:var(--rule)}
+#bot{flex:1 1 auto;background:var(--lowBg);display:flex;align-items:flex-start;justify-content:center;padding:9px 34px 0}
+.qline{white-space:nowrap;max-width:100%;transition:opacity .7s ease;text-align:center}
+#qBot.wrap{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#err{position:absolute;right:4px;bottom:0;font:11px Georgia,serif;color:#8A6A52}
+#qTop{font-family:var(--serif);font-weight:600;color:var(--topText);line-height:1.3;letter-spacing:.005em}
+#qBot{font-family:var(--serif);font-style:italic;color:var(--lowText);line-height:1.4;transition:opacity .7s ease,color .4s ease}
+.ch{display:inline-block;transition:transform .7s cubic-bezier(.34,1.56,.64,1)}
+.fade{opacity:0}
+#world{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#widget.over{cursor:pointer}
+
+@media (prefers-reduced-motion:reduce){.ch,.qline{transition:none}}
 </style>
 </head>
 <body>
-<div id="stage"></div>
-<script>
-var QUOTES=[
- {h:"Don't try to predict the future. Build a life that allows you to benefit from the unexpected.",
-  b:"The aim isn't to get everything right, but to put yourself in a position where, even when things don't go to plan, you can still come out ahead."},
- {h:"Small failures are the price of learning. It's when you suppress them or refuse to learn from them that the real damage is done.",
-  b:"Don't shy away from setbacks. Small setbacks are part of what builds resilience and protects you from being brought down by a much bigger failure later on."},
- {h:"Look for opportunities where the downside is limited but the upside is potentially unlimited.",
-  b:"Before making a decision, ask yourself: what's the most I could lose, and how much could I stand to gain? Prioritise opportunities where the potential reward far outweighs the risk."},
- {h:"Don't waste your energy worrying about things that are beyond your control.",
-  b:"You can't change everyone's mind, and you certainly can't reason with everyone. Know where your influence ends, and learn to let go of what you cannot change."}
-];
-var INTERVAL=30000, MAX=20, MIN=8, stage=document.getElementById('stage'), els=[], cur=0;
-
-QUOTES.forEach(function(q){
-  var d=document.createElement('div');d.className='q';
-  var h=document.createElement('div');h.className='head';h.textContent=q.h;
-  var b=document.createElement('div');b.className='body';b.textContent=q.b;
-  d.appendChild(h);d.appendChild(b);stage.appendChild(d);els.push(d);
-});
-
-// Each line stays on ONE line: shrink its own font until it fits the width,
-// then shrink both together if the pair is still taller than the box.
-var HEAD_MAX=20, BODY_MAX=15;
-function fitLine(el,max,width){
-  var s=max;el.style.fontSize=s+'px';
-  while(s>MIN && el.scrollWidth>width){s-=0.25;el.style.fontSize=s+'px';}
-  return s;
-}
-function fitAll(){
-  els.forEach(function(d){
-    var h=d.firstChild,b=d.lastChild,cs=getComputedStyle(d);
-    var w=d.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
-    var availH=d.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
-    var hs=fitLine(h,HEAD_MAX,w), bs=fitLine(b,BODY_MAX,w);
-    var used=(b.offsetTop+b.offsetHeight)-h.offsetTop;
-    if(used>availH){var k=availH/used;h.style.fontSize=Math.max(MIN,hs*k)+'px';b.style.fontSize=Math.max(MIN,bs*k)+'px';}
-  });
-}
-function show(i){els[cur].classList.remove('on');cur=i;els[cur].classList.add('on');}
-
-fitAll();
-show(Math.floor(Math.random()*QUOTES.length));
-setInterval(function(){show((cur+1)%QUOTES.length);},INTERVAL);
-var t;window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(fitAll,100);});
-</script>
+<div id="widget" aria-label="Quote with a chameleon living on the frame">
+  <div id="panel">
+    <div id="top"><div class="qline" id="qTop"></div></div>
+    <div id="rule"></div>
+    <div id="bot"><div class="qline" id="qBot"></div></div>
+  </div>
+  <canvas id="world"></canvas>
+  <div id="err" hidden></div>
+</div>
+<script src="quotes/core.js?v=7"></script>
+<script src="quotes/chameleon.js?v=7"></script>
+<script src="quotes/scene.js?v=7"></script>
 </body>
 </html>

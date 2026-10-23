@@ -13,4 +13,5 @@
 9. 顏色屬於軌道（`Track.color`），時間段沒有自己的顏色；舊資料的軌道沒顏色時沿用它時間段以前存的顏色（`store.ts` 的 `trackFallbacks`）。
 10. 小旗排版在 `core/marks.ts`：由右往左放，每支取最低高度，文字可放旗桿左右；左邊只在下方沒有還沒放的旗子時才用；改這裡要跑 `tests/roadmap/marks.test.ts`。
 11. GitHub Pages 會讓瀏覽器把主頁留 10 分鐘：主頁裡的小程式打開時用 `cache: no-store` 問伺服器目前的程式檔，不同就換網址重開一次；所以上線後不用改 Notion 嵌入網址。
-12. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
+12. 首頁語錄框（`quotes.html`＋`quotes/core.js`、`chameleon.js`、`scene.js`，依序載入、共用變數）：世界進度（房子、樹…）只由真實時間推算（`worldAt`，起點台北 2026-10-23），不靠存檔；心情與摸摸次數存 localStorage `frame-spirit.v1`（不准改名）；改這裡跑 `node tests/e2e/quotes.mjs`；改程式要把 `quotes.html` 的 `?v=` 和 Notion 嵌入網址的 `?v=` 一起加 1。
+13. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
