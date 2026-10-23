@@ -7,5 +7,6 @@
   {"id": "roadmap-pan", "desc": "拖曳、觸控板、滾輪左右移動，拖曳不會誤開卡片", "passes": true},
   {"id": "roadmap-instant", "desc": "按鈕確認不等存檔，失敗時顯示原因並退回", "passes": true},
   {"id": "roadmap-backup", "desc": "資料存瀏覽器，重新整理還在；備份複製與貼回（2026-10-23 依 Ben 要求移除備份按鈕）", "passes": true},
-  {"id": "roadmap-seed", "desc": "第一次打開從嵌入網址帶入資料，只用一次、不蓋掉已有資料", "passes": true}
+  {"id": "roadmap-seed", "desc": "第一次打開從嵌入網址帶入資料，只用一次、不蓋掉已有資料", "passes": true},
+  {"id": "roadmap-axis", "desc": "時間軸整合：蛋糕（煙顯示年紀）與目標小旗（尚未完成／完成＋日期）都在線上，小旗避開蛋糕", "passes": true}
 ]

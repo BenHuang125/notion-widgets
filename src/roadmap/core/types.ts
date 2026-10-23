@@ -61,8 +61,8 @@ export interface Segment {
   readonly end: YearMonth;
 }
 
-/** The rows around the axis. Built-in layers plus one per track. */
-export type LayerId = 'cakes' | 'flags' | `track:${string}`;
+/** The rows around the axis: one per track (cakes and flags live on the axis itself). */
+export type LayerId = `track:${string}`;
 
 export interface Layout {
   /** Top to bottom, above the axis. */

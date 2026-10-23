@@ -139,38 +139,37 @@ describe('board', () => {
     expect(nextRank([], '2027-12')).toBe(0);
     expect(yearEndMonth(2030)).toBe('2030-12');
   });
-  it('keeps every layer exactly once, tracks default below the axis', () => {
-    const tracks = [{ id: 't1', name: '學歷' }];
+  it('keeps every track exactly once, new tracks below the axis', () => {
+    const tracks = [{ id: 't1', name: '學歷', color: 'olive' as const }];
     expect(normalizeLayout({ layout: DEFAULT_LAYOUT, tracks })).toEqual({
-      above: ['flags', 'cakes'],
+      above: [],
       below: ['track:t1'],
     });
-    const messy = { above: ['cakes' as const, 'cakes' as const, 'track:gone' as const], below: [] };
-    expect(normalizeLayout({ layout: messy, tracks })).toEqual({
-      above: ['cakes', 'flags'],
-      below: ['track:t1'],
-    });
+    const messy = {
+      above: ['track:t1' as const, 'track:t1' as const, 'track:gone' as const],
+      below: [],
+    };
+    expect(normalizeLayout({ layout: messy, tracks })).toEqual({ above: ['track:t1'], below: [] });
   });
-  it('moves a layer across the axis', () => {
-    const start = { above: ['flags', 'cakes'] as const, below: ['track:a', 'track:b'] as const };
-    const layout = { above: [...start.above], below: [...start.below] };
-    expect(moveLayer(layout, 'track:b', 0)).toEqual({
-      above: ['track:b', 'flags', 'cakes'],
-      below: ['track:a'],
-    });
-    expect(moveLayer(layout, 'flags', 2)).toEqual({
-      above: ['cakes'],
-      below: ['flags', 'track:a', 'track:b'],
-    });
-    expect(moveLayer(layout, 'flags', 0)).toEqual(layout);
-    // The slot just above the axis stays above it.
-    expect(moveLayer(layout, 'track:a', 2)).toEqual({
-      above: ['flags', 'cakes', 'track:a'],
+  it('moves a track across the axis', () => {
+    const layout = { above: ['track:a' as const], below: ['track:b' as const, 'track:c' as const] };
+    expect(moveLayer(layout, 'track:c', 0)).toEqual({
+      above: ['track:c', 'track:a'],
       below: ['track:b'],
     });
-    expect(moveLayer(layout, 'track:a', 99)).toEqual({
-      above: ['flags', 'cakes'],
-      below: ['track:b', 'track:a'],
+    expect(moveLayer(layout, 'track:a', 1)).toEqual({
+      above: [],
+      below: ['track:a', 'track:b', 'track:c'],
+    });
+    expect(moveLayer(layout, 'track:a', 0)).toEqual(layout);
+    // The slot just above the axis stays above it.
+    expect(moveLayer(layout, 'track:b', 1)).toEqual({
+      above: ['track:a', 'track:b'],
+      below: ['track:c'],
+    });
+    expect(moveLayer(layout, 'track:b', 99)).toEqual({
+      above: ['track:a'],
+      below: ['track:c', 'track:b'],
     });
   });
   it('stacks overlapping ranges into sub-rows', () => {
@@ -210,8 +209,9 @@ describe('stored rows', () => {
   });
   it('reads a layout loosely', () => {
     expect(parseLayout(undefined)).toEqual({ above: [], below: [] });
-    expect(parseLayout({ above: ['cakes', 7, 'nope'], below: 'x' })).toEqual({
-      above: ['cakes'],
+    // Old layouts listed cakes and flags rows; those now live on the axis and are dropped.
+    expect(parseLayout({ above: ['cakes', 'flags', 'track:a', 7, 'nope'], below: 'x' })).toEqual({
+      above: ['track:a'],
       below: [],
     });
   });

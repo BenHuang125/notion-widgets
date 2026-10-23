@@ -28,16 +28,16 @@ export function nextRank(cards: readonly Card[], month: string): number {
 /** The default month for a card added under a year: December (Ben's year-end targets). */
 export const yearEndMonth = (year: number): string => `${year}-${MONTHS_PER_YEAR}`;
 
-export const DEFAULT_LAYOUT: Layout = { above: ['flags', 'cakes'], below: [] };
+export const DEFAULT_LAYOUT: Layout = { above: [], below: [] };
 
 const trackLayer = (t: Track): LayerId => `track:${t.id}`;
 
 /**
  * The stored layout, cleaned up: unknown layers dropped, missing ones added
- * (built-ins just above the axis, tracks below), each layer exactly once.
+ * (new tracks below the axis), each layer exactly once.
  */
 export function normalizeLayout(plan: Pick<Plan, 'layout' | 'tracks'>): Layout {
-  const known = new Set<LayerId>(['cakes', 'flags', ...plan.tracks.map(trackLayer)]);
+  const known = new Set<LayerId>(plan.tracks.map(trackLayer));
   const seen = new Set<LayerId>();
   const keep = (list: readonly LayerId[]): LayerId[] =>
     list.filter((id) => {
@@ -47,7 +47,6 @@ export function normalizeLayout(plan: Pick<Plan, 'layout' | 'tracks'>): Layout {
     });
   const above = keep(plan.layout.above);
   const below = keep(plan.layout.below);
-  for (const id of ['flags', 'cakes'] as const) if (!seen.has(id)) above.push(id);
   for (const t of plan.tracks) if (!seen.has(trackLayer(t))) below.push(trackLayer(t));
   return { above, below };
 }

@@ -3,10 +3,11 @@
 
 import { cardsByYear, normalizeLayout } from '../core/board';
 import { type Day, FIRST_YEAR, toIsoDate, yearCount } from '../core/dates';
-import { GOAL_PALETTE } from '../core/goals';
+import { GOAL_PALETTE, goalStatus } from '../core/goals';
 import type { Goal, LayerId, PaletteKey, Plan } from '../core/types';
 import { type Actions, makeActions } from '../data/actions';
 import type { Snapshot, Store } from '../data/store';
+import { axisRow } from './axis';
 import { closeDialog } from './dialog';
 import { h, icon } from './dom';
 import { cardForm, doneForm, goalForm, segmentForm, trackForm } from './forms';
@@ -15,7 +16,6 @@ import { makeKeeper, placeChildren } from './keep';
 import { lane, type Scale } from './lanes';
 import { dragSlides, wheelSlides } from './pan';
 import {
-  axisRow,
   boardShell,
   laneEvents,
   leftFor,
@@ -56,7 +56,8 @@ export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
   root.replaceChildren(notices, goalsSlot, loading);
   dragSlides(shell.board);
   wheelSlides(shell.board, '.lanes');
-  const draw = drawer({ root, deps, actions, state, shell, notices, goalsSlot, loading });
+  const reached = reachedWatch();
+  const draw = drawer({ root, deps, actions, state, shell, notices, goalsSlot, loading, reached });
   let queued = false;
   /**
    * Several changes in one step = one redraw, right after the step (a microtask). Not tied to
@@ -92,6 +93,26 @@ export function mountApp(root: HTMLElement, deps: AppDeps): () => void {
   };
 }
 
+/** Notices goals that turn reached between drawings, so their flag can rise once. */
+interface ReachedWatch {
+  update(plan: Plan): ReadonlySet<string>;
+}
+
+function reachedWatch(): ReachedWatch {
+  let before: Set<string> | null = null;
+  return {
+    update(plan) {
+      const now = new Set(
+        plan.goals.filter((g) => goalStatus(g, plan.cards).kind === 'reached').map((g) => g.id),
+      );
+      // The first drawing only takes note: flags already reached do not rise on page open.
+      const fresh = before ? new Set([...now].filter((id) => !before?.has(id))) : new Set<string>();
+      before = now;
+      return fresh;
+    },
+  };
+}
+
 interface DrawParts {
   readonly root: HTMLElement;
   readonly deps: AppDeps;
@@ -101,6 +122,7 @@ interface DrawParts {
   readonly notices: HTMLElement;
   readonly goalsSlot: HTMLElement;
   readonly loading: HTMLElement;
+  readonly reached: ReachedWatch;
 }
 
 function drawer(p: DrawParts): () => void {
@@ -148,10 +170,6 @@ function drawGoals(p: DrawParts, keeper: ReturnType<typeof makeKeeper>, plan: Pl
 }
 
 function laneSig(id: LayerId, plan: Plan, width: number): string {
-  if (id === 'cakes') return `${width}`;
-  if (id === 'flags') {
-    return JSON.stringify([width, plan.goals, plan.cards.map((c) => [c.goalId, c.state])]);
-  }
   const trackId = id.slice('track:'.length);
   const track = plan.tracks.find((t) => t.id === trackId);
   return JSON.stringify([width, track, plan.segments.filter((x) => x.trackId === trackId)]);
@@ -175,10 +193,12 @@ function drawLanes(
       laneSig(id, plan, w),
       () => lane(id, plan, scale, lanesEvents) ?? h('div'),
     );
-  const axisSig = JSON.stringify([w, toIsoDate(today)]);
+  const progress = plan.cards.map((c) => [c.goalId, c.state]);
+  const axisSig = JSON.stringify([w, toIsoDate(today), plan.goals, progress]);
+  const celebrate = p.reached.update(plan);
   const rows = [
     ...order.above.map(row),
-    keeper.piece('axis', axisSig, () => axisRow(scale, today, events)),
+    keeper.piece('axis', axisSig, () => axisRow({ plan, scale, today, celebrate }, events)),
     ...order.below.map(row),
   ];
   placeChildren(p.shell.lanes, rows);
@@ -274,6 +294,7 @@ function boardEvents(plan: () => Plan, actions: Actions, today: () => string): T
         newTrackColor: nextTrackColor(plan()),
       }),
     onTrack: (track) => trackForm(actions, track, track.color),
+    onGoal: (goal) => goalForm(actions, goal, today()),
     onMoveLayer: (id, slot) => actions.moveLayer(id, slot),
   };
 }
