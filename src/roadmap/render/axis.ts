@@ -15,19 +15,19 @@ import {
   yearCount,
 } from '../core/dates';
 import { goalStatus } from '../core/goals';
-import { isRoundAge, liftFlags } from '../core/marks';
+import { type FlagSpot, headroom, isRoundAge, placeFlags } from '../core/marks';
 import type { Goal, Plan } from '../core/types';
 import { h, paletteColor, s } from './dom';
 import type { Scale } from './lanes';
+import { labelWidth } from './measure';
 
 export interface AxisEvents {
   readonly onAxis: (month: string, x: number, y: number) => void;
   readonly onGoal: (goal: Goal) => void;
 }
 
-/** Height of the band with no lifted flags; each lifted level adds one step. */
-const BAND_PX = 96;
-const LEVEL_PX = 24;
+/** Where the line sits above the band's bottom (room for the year labels). */
+const LINE_Y_PX = 30;
 /** Each cake's smoke starts at a different moment, so they never puff together. */
 const SMOKE_STAGGER_S = 0.9;
 const SMOKE_PATTERN = 5;
@@ -66,17 +66,22 @@ function flagSvg(): SVGElement {
   );
 }
 
-function flagMark(goal: Goal, plan: Plan, x: number, level: number, celebrate: boolean) {
+function flagStatus(goal: Goal, plan: Plan): string {
+  const st = goalStatus(goal, plan.cards);
+  return st.kind === 'reached' ? `完成 ${dayLabel(st.on)}` : '尚未完成';
+}
+
+function flagMark(goal: Goal, plan: Plan, spot: FlagSpot, celebrate: boolean) {
   const st = goalStatus(goal, plan.cards);
   const reached = st.kind === 'reached';
-  const status = reached ? `完成 ${dayLabel(st.on)}` : '尚未完成';
+  const status = flagStatus(goal, plan);
   const tip = `${goal.title} · ${st.done}/${st.total} · 目標 ${dayLabel(goal.target)}`;
   const mark = h(
     'button',
     {
       type: 'button',
-      class: `flag-mark${reached ? ' is-reached' : ''}${celebrate ? ' just-reached' : ''}`,
-      style: `left:${x}px;--level:${level};--c:${paletteColor(goal.color)}`,
+      class: `flag-mark is-${spot.side}${reached ? ' is-reached' : ''}${celebrate ? ' just-reached' : ''}`,
+      style: `left:${spot.x}px;--pole:${spot.pole}px;--c:${paletteColor(goal.color)}`,
       title: tip,
       'aria-label': `${goal.title}，${status}，點一下編輯目標`,
     },
@@ -170,15 +175,17 @@ export function axisRow(input: AxisInput, events: AxisEvents): HTMLElement {
   const cakes = birthdays();
   const cakeXs = cakes.map((b) => scale.x(b.at));
   const goals = plan.goals;
-  const spots = liftFlags(
-    goals.map((g) => scale.x(monthsFromStart(parseIsoDate(g.target)))),
+  const spots = placeFlags(
+    goals.map((g) => ({
+      x: scale.x(monthsFromStart(parseIsoDate(g.target))),
+      labelWidth: labelWidth(g.title, flagStatus(g, plan)),
+    })),
     cakeXs,
   );
-  const top = Math.max(0, ...spots.map((p) => p.level));
   const band = h('div', {
     class: 'axis',
     'data-layer': 'axis',
-    style: `height:${BAND_PX + top * LEVEL_PX}px`,
+    style: `height:${LINE_Y_PX + headroom(spots)}px`,
   });
   const thisYear = (today.year - FIRST_YEAR) * scale.yearWidth;
   band.append(
@@ -194,7 +201,7 @@ export function axisRow(input: AxisInput, events: AxisEvents): HTMLElement {
   goals.forEach((g, i) => {
     const spot = spots[i];
     if (!spot) return;
-    const f = flagMark(g, plan, spot.x, spot.level, input.celebrate.has(g.id));
+    const f = flagMark(g, plan, spot, input.celebrate.has(g.id));
     f.addEventListener('click', () => events.onGoal(g));
     band.append(f);
   });

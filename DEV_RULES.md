@@ -11,5 +11,6 @@
 7. 在 Notion 裡是跨網域嵌入，瀏覽器可能暫停畫面更新（requestAnimationFrame）：重畫不准靠它排程（用 microtask）；任何錯誤都要寫在頁面上，不准停在「讀取中」。
 8. 日期一律英文月份、日月年：一天 `30 Sep 2026`（`dayLabel`）、一個月 `Sep 2017`（`monthLabel`）、區間 `Sep 2017 – Jun 2021`（`rangeLabel`），都在 `core/dates.ts`，不在別處自己組日期字。
 9. 顏色屬於軌道（`Track.color`），時間段沒有自己的顏色；舊資料的軌道沒顏色時沿用它時間段以前存的顏色（`store.ts` 的 `trackFallbacks`）。
-10. GitHub Pages 會讓瀏覽器把主頁留 10 分鐘：主頁裡的小程式打開時用 `cache: no-store` 問伺服器目前的程式檔，不同就換網址重開一次；所以上線後不用改 Notion 嵌入網址。
-11. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
+10. 小旗排版在 `core/marks.ts`：由右往左放，每支取最低高度，文字可放旗桿左右；左邊只在下方沒有還沒放的旗子時才用；改這裡要跑 `tests/roadmap/marks.test.ts`。
+11. GitHub Pages 會讓瀏覽器把主頁留 10 分鐘：主頁裡的小程式打開時用 `cache: no-store` 問伺服器目前的程式檔，不同就換網址重開一次；所以上線後不用改 Notion 嵌入網址。
+12. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
