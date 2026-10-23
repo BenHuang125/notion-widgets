@@ -13,7 +13,7 @@
 9. 顏色屬於軌道（`Track.color`），時間段沒有自己的顏色；舊資料的軌道沒顏色時沿用它時間段以前存的顏色（`store.ts` 的 `trackFallbacks`）。
 10. 小旗排版在 `core/marks.ts`：由右往左放，每支取最低高度，文字可放旗桿左右；左邊只在下方沒有還沒放的旗子時才用；改這裡要跑 `tests/roadmap/marks.test.ts`。
 11. GitHub Pages 會讓瀏覽器把主頁留 10 分鐘：主頁裡的小程式打開時用 `cache: no-store` 問伺服器目前的程式檔，不同就換網址重開一次；所以上線後不用改 Notion 嵌入網址。
-12. 首頁語錄框（`quotes.html`＋`quotes/core.js`、`chameleon.js`、`scene.js`，依序載入、共用變數）：世界進度（房子、樹…）只由真實時間推算（`worldAt`，起點台北 2026-10-23），不靠存檔；心情與摸摸次數存 localStorage `frame-spirit.v1`（不准改名）；改這裡跑 `node tests/e2e/quotes.mjs`；改程式要把 `quotes.html` 的 `?v=` 和 Notion 嵌入網址的 `?v=` 一起加 1。
+12. 首頁語錄框（`quotes.html`＋`quotes/data.js`、`core.js`、`chameleon.js`、`scene.js`、`shelf.js`，依序載入、共用變數）：語錄不寫死在程式裡，存在 localStorage `quote-shelf.v1`（不准改名；`items` 每句 id、h 深色行、b 淺色行、at 加入時間），點畫框右上的發光書架在同一個框裡打開收藏新增／修改／刪除，最新的排最前、框上馬上換成新加的那句；還沒存過時用 `data.js` 的四句起始語錄；世界進度（房子、樹…）只由真實時間推算（`worldAt`，起點台北 2026-10-23），不靠存檔；心情與摸摸次數存 localStorage `frame-spirit.v1`（不准改名）；改這裡跑 `node tests/e2e/quotes.mjs`；改程式要把 `quotes.html` 的 `?v=` 和 Notion 嵌入網址的 `?v=` 一起加 1。
 13. 上線：合併到 main 後 GitHub Pages 自動更新 `dist/index.html`；Notion HOME 嵌入這個網址。
 14. Working 頁日曆（`working.html`＋`working/*.js`，ES module）：資料只存 localStorage `working.v1`（不准改名；events、todos 以日期分、reviews 以週次分、projects）；
     專案從 Notion 嵌入網址 `#projects=` 帶入（`#` 後不送 GitHub，專案名不寫進 repo）：每項各自 URI 編碼、逗號分隔，格式 `名稱` 或 `Notion頁面id|名稱|舊名…`；先用 Notion id 對、再用名稱或舊名對，對到就原地改名（id、顏色、事件不變），新的接在最後，網址裡沒有的只從選單藏起來、資料保留（`core.js` 的 `mergeProjects`）；
