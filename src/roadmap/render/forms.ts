@@ -215,10 +215,11 @@ export interface SegmentFormInput {
   readonly tracks: readonly Track[];
   readonly segment: Segment | null;
   readonly start: string;
-  readonly color: PaletteKey;
+  /** The color a track made from this form gets (it can be changed in the track's form). */
+  readonly newTrackColor: PaletteKey;
 }
 
-function trackPicker(tracks: readonly Track[], chosen: string | null) {
+function trackPicker(tracks: readonly Track[], chosen: string | null, newColor: PaletteKey) {
   const NEW = '__new__';
   const sel = h('select', { id: fid('tr') });
   for (const t of tracks)
@@ -238,7 +239,7 @@ function trackPicker(tracks: readonly Track[], chosen: string | null) {
       return () => id;
     }
     const n = required(name, '新軌道名稱');
-    return () => actions.addTrack(n);
+    return () => actions.addTrack(n, newColor);
   };
   return { el: h('div', { class: 'stack' }, sel, name), read };
 }
@@ -246,10 +247,10 @@ function trackPicker(tracks: readonly Track[], chosen: string | null) {
 export function segmentForm(actions: Actions, input: SegmentFormInput): void {
   const seg = input.segment;
   const name = textInput(seg?.name ?? '');
-  const track = trackPicker(input.tracks, seg?.trackId ?? input.tracks[0]?.id ?? null);
+  const firstTrack = input.tracks[0]?.id ?? null;
+  const track = trackPicker(input.tracks, seg?.trackId ?? firstTrack, input.newTrackColor);
   const start = monthPicker(seg?.start ?? input.start);
   const end = monthPicker(seg?.end ?? input.start);
-  const color = swatches(seg?.color ?? input.color);
   const save: DialogAction = {
     label: seg ? '儲存' : '新增時間段',
     kind: 'primary',
@@ -262,7 +263,6 @@ export function segmentForm(actions: Actions, input: SegmentFormInput): void {
         name: n,
         start: start.read(),
         end: end.read(),
-        color: color.read(),
       };
       if (seg) actions.editSegment(seg, d);
       else actions.addSegment(d);
@@ -274,7 +274,6 @@ export function segmentForm(actions: Actions, input: SegmentFormInput): void {
     field('軌道', track.el),
     field('開始', start.el),
     field('結束（含當月）', end.el),
-    field('顏色', color.el),
   ];
   const extra = seg
     ? [del('刪除時間段', `時間段「${seg.name}」`, () => actions.deleteSegment(seg))]
@@ -282,20 +281,22 @@ export function segmentForm(actions: Actions, input: SegmentFormInput): void {
   openDialog(seg ? '編輯時間段' : '新增時間段', body, [...extra, cancel, save]);
 }
 
-export function trackForm(actions: Actions, track: Track | null): void {
+export function trackForm(actions: Actions, track: Track | null, newColor: PaletteKey): void {
   const name = textInput(track?.name ?? '');
+  const color = swatches(track?.color ?? newColor);
   const save: DialogAction = {
     label: track ? '儲存' : '新增軌道',
     kind: 'primary',
     run: () => {
       const n = required(name, '名稱');
-      if (track) actions.renameTrack(track, n);
-      else actions.addTrack(n);
+      if (track) actions.editTrack(track, n, color.read());
+      else actions.addTrack(n, color.read());
       return undefined;
     },
   };
   const extra = track
     ? [del('刪除軌道', `軌道「${track.name}」和裡面所有的時間段`, () => actions.deleteTrack(track))]
     : [];
-  openDialog(track ? '編輯軌道' : '新增軌道', [field('名稱', name)], [...extra, cancel, save]);
+  const body = [field('名稱', name), field('顏色（整條軌道的時間段都用這個顏色）', color.el)];
+  openDialog(track ? '編輯軌道' : '新增軌道', body, [...extra, cancel, save]);
 }

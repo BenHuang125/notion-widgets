@@ -71,4 +71,30 @@ describe('store kept in the browser', () => {
     expect(() => fromBackup('{"version":2}')).toThrow('版本');
     expect(makeStore(null).mode).toBe('memory');
   });
+  it('gives old colorless tracks the color their time ranges had, else an unused one', () => {
+    const old = JSON.stringify({
+      version: 1,
+      goals: {},
+      cards: {},
+      tracks: {
+        edu: { name: '學歷' },
+        work: { name: '工作經歷' },
+        own: { name: 'x', color: 'clay' },
+      },
+      segments: {
+        a: { trackId: 'edu', name: '大學', start: '2017-09', end: '2021-06', color: 'olive' },
+        b: { trackId: 'edu', name: '碩士', start: '2025-09', end: '2026-09', color: 'slate' },
+      },
+      layout: null,
+    });
+    const store = makeStore(memoryPersist(old).persist);
+    let snap: Snapshot | undefined;
+    store.subscribe(
+      (s) => (snap = s),
+      () => undefined,
+    );
+    const colors = Object.fromEntries((snap?.plan.tracks ?? []).map((t) => [t.id, t.color]));
+    expect(colors).toEqual({ edu: 'olive', work: 'slate', own: 'clay' });
+    expect(snap?.skipped).toEqual([]);
+  });
 });

@@ -180,7 +180,6 @@ describe('board', () => {
       name: id,
       start,
       end,
-      color: 'olive',
     });
     const { placed, rows } = placeSegments([
       seg('uni', '2017-09', '2021-06'),
@@ -206,7 +205,7 @@ describe('stored rows', () => {
     expect(parseCard('x', { title: 3 })).toEqual({ ok: false, why: 'goalId 不是文字' });
     expect(parseGoal('g', { title: 'A', target: '2027-02-30', color: 'clay' }).ok).toBe(false);
     expect(parseGoal('g', { title: 'A', target: '2027-02-28', color: 'red' }).ok).toBe(false);
-    const backwards = { trackId: 't', name: 'n', start: '2020-01', end: '2019-01', color: 'clay' };
+    const backwards = { trackId: 't', name: 'n', start: '2020-01', end: '2019-01' };
     expect(parseSegment('s', backwards)).toEqual({ ok: false, why: '結束早於開始' });
   });
   it('reads a layout loosely', () => {

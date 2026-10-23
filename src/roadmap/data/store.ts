@@ -3,7 +3,9 @@
 // browser refuses storage, only in memory (the page says so).
 
 import { DEFAULT_LAYOUT } from '../core/board';
+import { GOAL_PALETTE } from '../core/goals';
 import {
+  optionalColor,
   type Parsed,
   parseCard,
   parseGoal,
@@ -12,7 +14,7 @@ import {
   parseTrack,
   type Row,
 } from '../core/parse';
-import type { Card, Goal, Layout, Plan, Segment, Track } from '../core/types';
+import type { Card, Goal, Layout, PaletteKey, Plan, Segment, Track } from '../core/types';
 
 /** Storage names: never rename them, or Ben's saved data disappears. */
 export const COLLECTIONS = ['goals', 'cards', 'tracks', 'segments'] as const;
@@ -57,12 +59,43 @@ function collect<T>(
   return out;
 }
 
+/**
+ * The color an old, colorless track should get: the color its time ranges used to carry, or
+ * else the first palette color no other track has.
+ */
+function trackFallbacks(rows: Rows): Map<string, PaletteKey> {
+  const out = new Map<string, PaletteKey>();
+  for (const seg of rows.segments.values()) {
+    const tid = seg.trackId;
+    const c = optionalColor(seg);
+    if (typeof tid === 'string' && c && !out.has(tid)) out.set(tid, c);
+  }
+  const used = new Set<PaletteKey>(out.values());
+  for (const row of rows.tracks.values()) {
+    const own = optionalColor(row);
+    if (own) used.add(own);
+  }
+  for (const [id, row] of rows.tracks) {
+    if (optionalColor(row) || out.has(id)) continue;
+    const pick = GOAL_PALETTE.find((k) => !used.has(k)) ?? 'clay';
+    out.set(id, pick);
+    used.add(pick);
+  }
+  return out;
+}
+
 /** Builds the plan from raw rows; one bad row is skipped and named, the rest still show. */
 export function assemble(rows: Rows, layout: Row | undefined): Snapshot {
   const skipped: string[] = [];
+  const fallbacks = trackFallbacks(rows);
   const goals: Goal[] = collect(rows.goals, parseGoal, '目標', skipped);
   const cards: Card[] = collect(rows.cards, parseCard, '卡片', skipped);
-  const tracks: Track[] = collect(rows.tracks, parseTrack, '軌道', skipped);
+  const tracks: Track[] = collect(
+    rows.tracks,
+    (id, row) => parseTrack(id, row, fallbacks.get(id) ?? 'clay'),
+    '軌道',
+    skipped,
+  );
   const segments: Segment[] = collect(rows.segments, parseSegment, '時間段', skipped);
   const stored: Layout = layout ? parseLayout(layout) : DEFAULT_LAYOUT;
   return { plan: { goals, cards, tracks, segments, layout: stored }, skipped };

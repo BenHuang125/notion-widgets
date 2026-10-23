@@ -237,8 +237,9 @@ function noticeList(state: State, mode: Store['mode']): HTMLElement[] {
   return out;
 }
 
-function nextSegmentColor(plan: Plan): PaletteKey {
-  const used = new Set(plan.segments.map((x) => x.color));
+/** A new track's color: the first one no track uses yet. */
+function nextTrackColor(plan: Plan): PaletteKey {
+  const used = new Set(plan.tracks.map((t) => t.color));
   return GOAL_PALETTE.find((k) => !used.has(k)) ?? GOAL_PALETTE[0] ?? 'clay';
 }
 
@@ -260,19 +261,19 @@ function boardEvents(plan: () => Plan, actions: Actions, today: () => string): T
               tracks: plan().tracks,
               segment: null,
               start: month,
-              color: nextSegmentColor(plan()),
+              newTrackColor: nextTrackColor(plan()),
             }),
         ],
-        ['新增軌道', () => trackForm(actions, null)],
+        ['新增軌道', () => trackForm(actions, null, nextTrackColor(plan()))],
       ]),
     onSegment: (segment) =>
       segmentForm(actions, {
         tracks: plan().tracks,
         segment,
         start: segment.start,
-        color: segment.color,
+        newTrackColor: nextTrackColor(plan()),
       }),
-    onTrack: (track) => trackForm(actions, track),
+    onTrack: (track) => trackForm(actions, track, track.color),
     onMoveLayer: (id, slot) => actions.moveLayer(id, slot),
   };
 }

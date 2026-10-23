@@ -96,7 +96,7 @@ function trackLane(track: Track, plan: Plan, scale: Scale, events: LaneEvents): 
       {
         type: 'button',
         class: 'segment',
-        style: `left:${left}px;width:${scale.x(p.to) - left}px;top:${TRACK_LABEL_PX + p.row * SEGMENT_ROW_PX}px;--c:${paletteColor(p.segment.color)}`,
+        style: `left:${left}px;width:${scale.x(p.to) - left}px;top:${TRACK_LABEL_PX + p.row * SEGMENT_ROW_PX}px;--c:${paletteColor(track.color)}`,
         title: `${p.segment.name}（${rangeLabel(p.segment.start, p.segment.end)}）`,
       },
       h('span', { class: 'segment-name' }, p.segment.name),

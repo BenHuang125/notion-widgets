@@ -167,6 +167,21 @@ try {
   await page.waitForFunction(() => window.__saved().layout?.above?.[0]?.startsWith('track:'));
   check(true, 'track moved above the axis');
 
+  // Color is set on the track, and every time range in it follows.
+  await page.click('.segment');
+  check((await page.locator('.dlg .swatches').count()) === 0, 'time range form has no color');
+  await page.keyboard.press('Escape');
+  await page.click('.track-name');
+  await page.click('.dlg .swatch[aria-label="梅紫"]');
+  await page.click('.dlg .btn-primary');
+  await page.waitForFunction(() =>
+    document.querySelector('.segment')?.getAttribute('style')?.includes('--p-plum'),
+  );
+  check(
+    (await page.evaluate(() => Object.values(window.__saved().tracks)[0].color)) === 'plum',
+    'track color saved and used by its time ranges',
+  );
+
   // Drag the board: it slides, and the click at the end does not open a card.
   const board = page.locator('[data-scroll="board"]');
   const before = await board.evaluate((b) => b.scrollLeft);
