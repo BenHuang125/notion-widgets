@@ -1,6 +1,6 @@
 // Working calendar — the day box (to-dos, separate from the calendar) and the weekly review.
-import { addDays, dayKey, fmt, today, uid, weekOf, weekStart } from './core.js?v=1';
-import { $, app, h } from './dom.js?v=1';
+import { addDays, dayKey, fmt, today, uid, weekOf, weekStart } from './core.js?v=2';
+import { $, app, h } from './dom.js?v=2';
 
 const SAVE_DELAY_MS = 300;
 const TEXT_COLOURS = [['1', 'Ink', '--ink'], ['2', 'Brown', '--brown'], ['3', 'Rose', '--t-rose'], ['4', 'Moss', '--p-moss'], ['5', 'Slate', '--t-slate'], ['6', 'Grey', '--soft']];
